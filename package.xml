@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>controller_plugin_speed_controller</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="rafa.perez.s98@gmail.com">rafa</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs </depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>as2_core</depend>
+  <depend>as2_msgs</depend>
+  <depend>as2_motion_command_handlers</depend>
+  <depend>pluginlib</depend>
+  <depend>controller_plugin_base</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
