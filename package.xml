@@ -21,6 +21,7 @@
   <depend>as2_motion_command_handlers</depend>
   <depend>pluginlib</depend>
   <depend>controller_plugin_base</depend>
+  <depend>tf2</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
