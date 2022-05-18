@@ -52,7 +52,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "controller_plugin_base/controller_base.hpp"
 
 #include "speed_controller.hpp"
