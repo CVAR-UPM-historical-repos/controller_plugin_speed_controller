@@ -169,21 +169,23 @@ namespace controller_plugin_speed_controller
   {
     if (!flags_.state_received)
     {
-      RCLCPP_WARN_ONCE(node_ptr_->get_logger(), "State not received yet");
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State not received yet");
       return;
     }
 
     if (!flags_.parameters_read)
     {
-      RCLCPP_WARN_ONCE(node_ptr_->get_logger(), "Parameters not read yet");
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Parameters not read yet");
       return;
     }
 
     if (!flags_.ref_received)
     {
-      RCLCPP_WARN(node_ptr_->get_logger(), "State changed, but ref not recived yet");
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State changed, but ref not recived yet");
       return;
-      // computeHOVER(pose, twist, thrust);
     }
     else
     {
@@ -233,7 +235,8 @@ namespace controller_plugin_speed_controller
       break;
     } 
     default:
-      RCLCPP_ERROR_ONCE(node_ptr_->get_logger(), "Unknown control mode");
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown control mode");
       return;
       break;
     }
@@ -255,12 +258,12 @@ namespace controller_plugin_speed_controller
     }
     case as2_msgs::msg::ControlMode::YAW_SPEED:
     {  
-      RCLCPP_INFO(node_ptr_->get_logger(), "Yaw speed control");
       control_command_.yaw[1] = control_ref_.yaw[1];
       break;
     }
     default:
-      RCLCPP_ERROR_ONCE(node_ptr_->get_logger(), "Unknown yaw mode");
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown yaw mode");
       return;
       break;
     }
@@ -273,7 +276,8 @@ namespace controller_plugin_speed_controller
       break;
     }
     default:
-      RCLCPP_ERROR_ONCE(node_ptr_->get_logger(), "Unknown reference frame");
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
       return;
       break;
     }
@@ -319,7 +323,7 @@ namespace controller_plugin_speed_controller
             parameters_to_read_.end());
         if (parameters_to_read_.empty())
         {
-          RCLCPP_INFO(node_ptr_->get_logger(), "All parameters read");
+          RCLCPP_DEBUG(node_ptr_->get_logger(), "All parameters read");
           flags_.parameters_read = true;
         }
       }
