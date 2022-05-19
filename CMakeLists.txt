@@ -16,18 +16,16 @@ endif()
 set(PROJECT_DEPENDENCIES
   ament_cmake
   rclcpp
-  std_msgs
-  sensor_msgs
   geometry_msgs
   trajectory_msgs
   nav_msgs
   Eigen3
+  yaml-cpp
   pluginlib
   as2_core
   as2_msgs
-  std_srvs
   controller_plugin_base
-  tf2
+  tf2_geometry_msgs
 )
 
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
