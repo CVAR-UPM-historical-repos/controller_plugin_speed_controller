@@ -301,6 +301,10 @@ namespace controller_plugin_speed_controller
     // Delimit the speed for each axis
     for (short j = 0; j < 3; j++)
     {
+      if (speed_limits_[j] == 0.0f)
+      {
+        continue;
+      }
       control_command_.vel[j] = (control_command_.vel[j] >  speed_limits_[j]) ?  speed_limits_[j] : control_command_.vel[j];
       control_command_.vel[j] = (control_command_.vel[j] < -speed_limits_[j]) ? -speed_limits_[j] : control_command_.vel[j];
     }
