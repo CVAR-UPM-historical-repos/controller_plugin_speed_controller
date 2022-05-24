@@ -136,6 +136,8 @@ namespace speed_controller
         const double &yaw_angle_ref,
         const double &dt)
   {
+    // Wrap angles to [-pi, pi]
+
     double yaw_angle_ref_wrap = yaw_angle_ref;
     if (yaw_angle_ref_wrap < -M_PI)
     {
@@ -146,10 +148,20 @@ namespace speed_controller
         yaw_angle_ref_wrap -= 2.0 * M_PI;
     }
 
-    double yaw_angle_diff = 0.0;
+    double yaw_angle_state_wrap = yaw_angle_state;
+    if (yaw_angle_state_wrap < -M_PI)
+    {
+        yaw_angle_state_wrap += 2.0 * M_PI;
+    }
+    else if (yaw_angle_state_wrap > M_PI)
+    {
+        yaw_angle_state_wrap -= 2.0 * M_PI;
+    }
+    
+    // Compute yaw angle error in rad
+    double yaw_angle_diff = yaw_angle_ref_wrap - yaw_angle_state;
 
-    yaw_angle_diff = yaw_angle_ref_wrap - yaw_angle_state;
-
+    // Wrap angle error to [-pi, pi]
     if (yaw_angle_diff < -M_PI)
     {
         return yaw_angle_diff + 2.0 * M_PI;
