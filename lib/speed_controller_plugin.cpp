@@ -104,6 +104,15 @@ namespace controller_plugin_speed_controller
 
   void SCPlugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg)
   {
+    if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION)
+    {
+      speed_limits_ = Vector3d(
+          twist_msg.twist.linear.x,
+          twist_msg.twist.linear.y,
+          twist_msg.twist.linear.z);
+      return;
+    }
+
     if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::SPEED)
     {
       return;
@@ -215,10 +224,7 @@ namespace controller_plugin_speed_controller
     } 
     case as2_msgs::msg::ControlMode::POSITION:
     {
-      control_command_.vel = controller_handler_->computePositionControl(
-          uav_state_,
-          control_ref_,
-          dt);
+      computePositionControl(dt);
       break;
     } 
     case as2_msgs::msg::ControlMode::SPEED:
@@ -280,6 +286,23 @@ namespace controller_plugin_speed_controller
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
       return;
       break;
+    }
+
+    return;
+  };
+
+  void SCPlugin::computePositionControl(const double &dt)
+  {
+    control_command_.vel = controller_handler_->computePositionControl(
+          uav_state_,
+          control_ref_,
+          dt);
+
+    // Delimit the speed for each axis
+    for (short j = 0; j < 3; j++)
+    {
+      control_command_.vel[j] = (control_command_.vel[j] >  speed_limits_[j]) ?  speed_limits_[j] : control_command_.vel[j];
+      control_command_.vel[j] = (control_command_.vel[j] < -speed_limits_[j]) ? -speed_limits_[j] : control_command_.vel[j];
     }
 
     return;

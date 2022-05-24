@@ -113,6 +113,8 @@ namespace controller_plugin_speed_controller
     Control_ref control_ref_;
     Control_command control_command_;
 
+    Vector3d speed_limits_;
+
     UAV_state uav_hover_state_;
   
   private:
@@ -121,6 +123,8 @@ namespace controller_plugin_speed_controller
     void resetState();
     void resetReferences();
     void resetCommands();
+
+    void computePositionControl(const double &dt);
 
     void computeActions(
         geometry_msgs::msg::PoseStamped &pose,
