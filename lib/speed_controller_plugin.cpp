@@ -98,13 +98,17 @@ namespace controller_plugin_speed_controller
         control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) &&
         control_mode_in_.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE)
     {
-      Eigen::Quaterniond q(
-        pose_msg.pose.orientation.w,
+      tf2::Quaternion q(
+        pose_msg.pose.orientation.w, 
         pose_msg.pose.orientation.x,
-        pose_msg.pose.orientation.y,
+        pose_msg.pose.orientation.y, 
         pose_msg.pose.orientation.z);
 
-      control_ref_.yaw[0] = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+      tf2::Matrix3x3 m(q);
+      double roll, pitch, yaw;
+      m.getRPY(roll, pitch, yaw);
+
+      control_ref_.yaw[0] = yaw;
     }
 
     return;
@@ -158,9 +162,9 @@ namespace controller_plugin_speed_controller
         traj_msg.velocities[2]);
 
     control_ref_.yaw = Vector3d(
-        traj_msg.positions[4],
-        traj_msg.velocities[4],
-        traj_msg.accelerations[4]);
+        traj_msg.positions[3],
+        traj_msg.velocities[3],
+        traj_msg.accelerations[3]);
 
     flags_.ref_received = true;
     return;
