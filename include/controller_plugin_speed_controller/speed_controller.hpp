@@ -100,14 +100,14 @@ namespace speed_controller
   private:
     std::unordered_map<std::string, double> parameters_ = {
         {"traj_Kp", 1.0},
-        // {"pos_Kp", 0.1},
-        // {"pos_Kv", 0.1},
+        {"pos_Kp", 1},
+        {"pos_Kd", 0.1},
     };
 
     float traj_Kp_ = 0.1;
 
-    float pos_Kp_ = 0.1;
-    float pos_Kv_ = 0.1;
+    float pos_Kp_ = 1;
+    float pos_Kd_ = 0.1;
 
   private:
     void updateGains_();

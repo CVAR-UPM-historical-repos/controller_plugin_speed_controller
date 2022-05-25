@@ -99,9 +99,8 @@ namespace speed_controller
   void SpeedController::updateGains_()
   {
     traj_Kp_ = parameters_["traj_Kp"];
-
-    // pos_Kp_ = parameters_["pos_Kp"];
-    // pos_Kv_ = parameters_["pos_Kv"];
+    pos_Kp_ = parameters_["pos_Kp"];
+    pos_Kd_ = parameters_["pos_Kd"];
 
     return;
   };
@@ -119,7 +118,7 @@ namespace speed_controller
     Vector3d pos_err = pos_ref - pos_state;
     Vector3d vel_err = vel_ref - vel_state;
 
-    return pos_Kp_ * pos_err + pos_Kv_ * vel_err; // TODO
+    return pos_Kp_ * pos_err + pos_Kd_ * vel_err; // TODO
   };
 
   Vector3d SpeedController::computeTrayectoryControl(

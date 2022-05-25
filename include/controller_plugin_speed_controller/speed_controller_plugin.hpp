@@ -107,6 +107,8 @@ namespace controller_plugin_speed_controller
 
     std::vector<std::string> parameters_to_read_ = {
         "traj_Kp",
+        "pos_Kp",
+        "pos_Kd",
     };
 
     UAV_state uav_state_;
