@@ -84,21 +84,29 @@ namespace controller_plugin_speed_controller
 
   void SCPlugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg)
   {
-    if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::SPEED ||
-        control_mode_in_.yaw_mode != as2_msgs::msg::ControlMode::YAW_ANGLE)
+    if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION)
     {
-      return;
+      control_ref_.pos = Vector3d(
+          pose_msg.pose.position.x,
+          pose_msg.pose.position.y,
+          pose_msg.pose.position.z);
+        
+      flags_.ref_received = true;
     }
 
-    Eigen::Quaterniond q(
+    if ((control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED ||
+        control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) &&
+        control_mode_in_.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE)
+    {
+      Eigen::Quaterniond q(
         pose_msg.pose.orientation.w,
         pose_msg.pose.orientation.x,
         pose_msg.pose.orientation.y,
         pose_msg.pose.orientation.z);
 
-    control_ref_.yaw[0] = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+      control_ref_.yaw[0] = q.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+    }
 
-    flags_.ref_received = true;
     return;
   };
 
