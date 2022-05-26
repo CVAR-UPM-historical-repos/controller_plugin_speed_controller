@@ -99,16 +99,22 @@ namespace controller_plugin_speed_controller
         control_mode_in_.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE)
     {
       tf2::Quaternion q(
-        pose_msg.pose.orientation.w, 
-        pose_msg.pose.orientation.x,
-        pose_msg.pose.orientation.y, 
-        pose_msg.pose.orientation.z);
+        pose_msg.pose.orientation.x, 
+        pose_msg.pose.orientation.y,
+        pose_msg.pose.orientation.z, 
+        pose_msg.pose.orientation.w);
 
       tf2::Matrix3x3 m(q);
       double roll, pitch, yaw;
       m.getRPY(roll, pitch, yaw);
 
+      // Eigen::Quaterniond q(pose_msg.pose.orientation.w, pose_msg.pose.orientation.x,
+      //                      pose_msg.pose.orientation.y, pose_msg.pose.orientation.z);
+
+      // control_ref_.yaw[0] = q.toRotationMatrix().eulerAngles(2, 0, 1)[0];
       control_ref_.yaw[0] = yaw;
+
+      RCLCPP_INFO(node_ptr_->get_logger(), "Yaw reference: %f", yaw);
     }
 
     return;
