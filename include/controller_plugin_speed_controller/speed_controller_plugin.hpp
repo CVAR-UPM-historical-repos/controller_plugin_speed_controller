@@ -72,11 +72,11 @@ namespace controller_plugin_speed_controller
     bool hover_mode_;
   };
 
-  class SCPlugin : public controller_plugin_base::ControllerBase
+  class Plugin : public controller_plugin_base::ControllerBase
   {
   public:
-    SCPlugin(){};
-    ~SCPlugin(){};
+    Plugin(){};
+    ~Plugin(){};
 
   public:
     void ownInitialize() override;

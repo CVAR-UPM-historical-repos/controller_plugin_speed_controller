@@ -39,7 +39,7 @@
 namespace controller_plugin_speed_controller
 {
 
-  void SCPlugin::ownInitialize()
+  void Plugin::ownInitialize()
   {
     flags_.parameters_read = false;
     flags_.state_received = false;
@@ -48,7 +48,7 @@ namespace controller_plugin_speed_controller
     controller_handler_ = std::make_shared<SpeedController>();
 
     static auto parameters_callback_handle_ = node_ptr_->add_on_set_parameters_callback(
-      std::bind(&SCPlugin::parametersCallback, this, std::placeholders::_1));
+      std::bind(&Plugin::parametersCallback, this, std::placeholders::_1));
 
     declareParameters();
     
@@ -58,7 +58,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::updateState(const nav_msgs::msg::Odometry &odom_msg)
+  void Plugin::updateState(const nav_msgs::msg::Odometry &odom_msg)
   {
     uav_state_.pos = Vector3d(
         odom_msg.pose.pose.position.x,
@@ -82,7 +82,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg)
+  void Plugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg)
   {
     if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION)
     {
@@ -114,7 +114,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg)
+  void Plugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg)
   {
     if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION)
     {
@@ -144,7 +144,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &traj_msg)
+  void Plugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &traj_msg)
   {
     if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::TRAJECTORY)
     {
@@ -170,7 +170,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  bool SCPlugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
+  bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
                          const as2_msgs::msg::ControlMode &out_mode)
   {
     control_mode_in_ = in_mode;
@@ -184,7 +184,7 @@ namespace controller_plugin_speed_controller
     return true;
   };
 
-  void SCPlugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
+  void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
                                geometry_msgs::msg::TwistStamped &twist,
                                as2_msgs::msg::Thrust &thrust)
   {
@@ -217,7 +217,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
+  void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
                                 geometry_msgs::msg::TwistStamped &twist,
                                 as2_msgs::msg::Thrust &thrust)
   {
@@ -303,7 +303,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::computePositionControl(const double &dt)
+  void Plugin::computePositionControl(const double &dt)
   {
     control_command_.vel = controller_handler_->computePositionControl(
           uav_state_,
@@ -324,7 +324,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::getOutput(geometry_msgs::msg::PoseStamped &pose_msg,
+  void Plugin::getOutput(geometry_msgs::msg::PoseStamped &pose_msg,
                            geometry_msgs::msg::TwistStamped &twist_msg,
                            as2_msgs::msg::Thrust &thrust_msg)
   {
@@ -341,7 +341,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  rcl_interfaces::msg::SetParametersResult SCPlugin::parametersCallback(const std::vector<rclcpp::Parameter> &parameters)
+  rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(const std::vector<rclcpp::Parameter> &parameters)
   {
     rcl_interfaces::msg::SetParametersResult result;
     result.successful = true;
@@ -376,7 +376,7 @@ namespace controller_plugin_speed_controller
     return result;
   };
 
-  void SCPlugin::declareParameters()
+  void Plugin::declareParameters()
   {
     std::vector<std::pair<std::string, double>> params = controller_handler_->getParametersList();
     for (auto &param : params)
@@ -386,7 +386,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-    void SCPlugin::resetState()
+    void Plugin::resetState()
   {
     uav_state_.pos = Vector3d::Zero();
     uav_state_.vel = Vector3d::Zero();
@@ -394,7 +394,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::resetReferences()
+  void Plugin::resetReferences()
   {
     control_ref_.pos = uav_state_.pos;
     control_ref_.vel = Vector3d::Zero();
@@ -411,7 +411,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void SCPlugin::resetCommands()
+  void Plugin::resetCommands()
   {
     control_command_.vel.setZero();
     control_command_.yaw.setZero();
@@ -421,5 +421,5 @@ namespace controller_plugin_speed_controller
 } // namespace controller_plugin_differential_flatness
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(controller_plugin_speed_controller::SCPlugin,
+PLUGINLIB_EXPORT_CLASS(controller_plugin_speed_controller::Plugin,
                        controller_plugin_base::ControllerBase)
