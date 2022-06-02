@@ -83,31 +83,84 @@ namespace speed_controller
     std::vector<std::pair<std::string, double>> getParametersList();
 
     Vector3d computePositionControl(
-        const UAV_state &state_,
-        const Control_ref &ref_,
+        const UAV_state &state,
+        const Control_ref &ref,
         const double &dt);
 
     Vector3d computeTrayectoryControl(
-      const UAV_state &state_,
+      const UAV_state &state,
       const Control_ref &ref,
       const double &dt);
+
+    Vector3d computeSpeedControl(
+        const UAV_state &state,
+        const Control_ref &ref,
+        const double &dt);
 
     double computeYawSpeed(
         const double &yaw_angle_state,
         const double &yaw_angle_ref,
         const double &dt);
 
+    void resetError();
+
   private:
+    Eigen::Vector3d position_accum_error_ = Eigen::Vector3d::Zero();
+    Eigen::Vector3d traj_position_accum_error_ = Eigen::Vector3d::Zero();
+    Eigen::Vector3d speed_accum_error_ = Eigen::Vector3d::Zero();
+    double yaw_accum_error_ = 0.0;
+
     std::unordered_map<std::string, double> parameters_ = {
-        {"traj_Kp", 1.0},
-        {"pos_Kp", 1},
-        {"pos_Kd", 0.1},
+        {"antiwindup_cte", 5.0},
+        {"alpha", 0.1},
+        {"position_following.position_Kp.x", 1.0},
+        {"position_following.position_Kp.y", 1.0},
+        {"position_following.position_Kp.z", 1.0},
+        {"position_following.position_Ki.x", 0.0},
+        {"position_following.position_Ki.y", 0.0},
+        {"position_following.position_Ki.z", 0.0},
+        {"position_following.position_Kd.x", 0.0},
+        {"position_following.position_Kd.y", 0.0},
+        {"position_following.position_Kd.z", 0.0},
+        {"trajectory_following.position_Kp.x", 6.0},
+        {"trajectory_following.position_Kp.y", 6.0},
+        {"trajectory_following.position_Kp.z", 6.0},
+        {"trajectory_following.position_Ki.x", 0.05},
+        {"trajectory_following.position_Ki.y", 0.05},
+        {"trajectory_following.position_Ki.z", 0.065},
+        {"trajectory_following.position_Kd.x", 2.5},
+        {"trajectory_following.position_Kd.y", 2.5},
+        {"trajectory_following.position_Kd.z", 3.0},
+        {"speed_following.speed_Kp.x", 1.0},
+        {"speed_following.speed_Kp.y", 1.0},
+        {"speed_following.speed_Kp.z", 1.0},
+        {"speed_following.speed_Ki.x", 0.0},
+        {"speed_following.speed_Ki.y", 0.0},
+        {"speed_following.speed_Ki.z", 0.0},
+        {"speed_following.speed_Kd.x", 0.0},
+        {"speed_following.speed_Kd.y", 0.0},
+        {"speed_following.speed_Kd.z", 0.0},
+        {"yaw_speed_controller.Kp", 1.0},
+        {"yaw_speed_controller.Ki", 1.0},
+        {"yaw_speed_controller.Kd", 1.0},
     };
 
-    float traj_Kp_ = 0.1;
+    float antiwindup_cte_ = 1.0f;
+    double alpha_ = 0.1;
 
-    float pos_Kp_ = 1;
-    float pos_Kd_ = 0.1;
+    Eigen::Matrix3d traj_Kp_lin_mat_ = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d traj_Ki_lin_mat_ = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d traj_Kd_lin_mat_ = Eigen::Matrix3d::Identity();
+
+    Eigen::Matrix3d position_Kp_lin_mat_ = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d position_Ki_lin_mat_ = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d position_Kd_lin_mat_ = Eigen::Matrix3d::Identity();
+
+    Eigen::Matrix3d speed_Kp_lin_mat_ = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d speed_Ki_lin_mat_ = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d speed_Kd_lin_mat_ = Eigen::Matrix3d::Identity();
+
+    Eigen::Vector3d yaw_ang_mat_ = Eigen::Vector3d::Identity();
 
   private:
     void updateGains_();

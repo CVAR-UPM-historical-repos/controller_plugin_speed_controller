@@ -1,6 +1,47 @@
 /**:
   ros__parameters:
-    traj_Kp: 1.0
-    pos_Kp: 1.0
-    pos_Kd: 0.1
-
+    antiwindup_cte : 5.0
+    alpha: 0.1
+    trajectory_following:
+      position_Kp:
+        x: 2.0
+        y: 2.0
+        z: 2.0
+      position_Ki:
+        x: 0.001
+        y: 0.001
+        z: 0.002
+      position_Kd:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    position_following:
+      position_Kp: 
+        x: 0.37
+        y: 0.37
+        z: 1.2
+      position_Ki:
+        x: 0.00015
+        y: 0.00015
+        z: 0.01
+      position_Kd: 
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    speed_following:
+      speed_Kp:
+        x: 1.0
+        y: 1.0
+        z: 5.0
+      speed_Ki:
+        x: 1.5
+        y: 1.5
+        z: 1.5
+      speed_Kd:
+        x: 0.0001
+        y: 0.0001
+        z: 0.0001
+    yaw_speed_controller:
+      Kp: 1.0
+      Ki: 0.001
+      Kd: 0.0

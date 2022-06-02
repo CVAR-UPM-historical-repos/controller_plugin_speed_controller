@@ -77,7 +77,7 @@ namespace controller_plugin_speed_controller
             odom_msg.pose.pose.orientation.w);
 
     uav_state_.rot = q_tf;
-
+    
     flags_.state_received = true;
     return;
   };
@@ -231,7 +231,7 @@ namespace controller_plugin_speed_controller
     {
     case as2_msgs::msg::ControlMode::HOVER:
     {
-      return;
+      computePositionControl(dt);
       break;
     } 
     case as2_msgs::msg::ControlMode::POSITION:
@@ -241,7 +241,12 @@ namespace controller_plugin_speed_controller
     } 
     case as2_msgs::msg::ControlMode::SPEED:
     {
-      control_command_.vel = control_ref_.vel;
+      // control_command_.vel = control_ref_.vel;
+      control_command_.vel = controller_handler_->computeSpeedControl(
+          uav_state_,
+          control_ref_,
+          dt);
+
       break;
     } 
     case as2_msgs::msg::ControlMode::TRAJECTORY:
