@@ -48,10 +48,10 @@ namespace controller_plugin_speed_controller
     controller_handler_ = std::make_shared<SpeedController>();
 
     static auto parameters_callback_handle_ = node_ptr_->add_on_set_parameters_callback(
-      std::bind(&Plugin::parametersCallback, this, std::placeholders::_1));
+        std::bind(&Plugin::parametersCallback, this, std::placeholders::_1));
 
     declareParameters();
-    
+
     resetState();
     resetReferences();
     resetCommands();
@@ -71,13 +71,13 @@ namespace controller_plugin_speed_controller
         odom_msg.twist.twist.linear.z);
 
     tf2::Quaternion q_tf(
-            odom_msg.pose.pose.orientation.x,
-            odom_msg.pose.pose.orientation.y,
-            odom_msg.pose.pose.orientation.z,
-            odom_msg.pose.pose.orientation.w);
+        odom_msg.pose.pose.orientation.x,
+        odom_msg.pose.pose.orientation.y,
+        odom_msg.pose.pose.orientation.z,
+        odom_msg.pose.pose.orientation.w);
 
     uav_state_.rot = q_tf;
-    
+
     flags_.state_received = true;
     return;
   };
@@ -90,19 +90,19 @@ namespace controller_plugin_speed_controller
           pose_msg.pose.position.x,
           pose_msg.pose.position.y,
           pose_msg.pose.position.z);
-        
+
       flags_.ref_received = true;
     }
 
     if ((control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED ||
-        control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) &&
+         control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) &&
         control_mode_in_.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE)
     {
       tf2::Quaternion q(
-        pose_msg.pose.orientation.x, 
-        pose_msg.pose.orientation.y,
-        pose_msg.pose.orientation.z, 
-        pose_msg.pose.orientation.w);
+          pose_msg.pose.orientation.x,
+          pose_msg.pose.orientation.y,
+          pose_msg.pose.orientation.z,
+          pose_msg.pose.orientation.w);
 
       tf2::Matrix3x3 m(q);
       double roll, pitch, yaw;
@@ -171,13 +171,26 @@ namespace controller_plugin_speed_controller
   };
 
   bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
-                         const as2_msgs::msg::ControlMode &out_mode)
+                       const as2_msgs::msg::ControlMode &out_mode)
   {
-    control_mode_in_ = in_mode;
+    if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::HOVER)
+    {
+      control_mode_in_.control_mode = in_mode.control_mode;
+      control_mode_in_.yaw_mode = as2_msgs::msg::ControlMode::YAW_ANGLE;
+      control_mode_in_.reference_frame = as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME;
+    }
+    else
+    {
+      control_mode_in_ = in_mode;
+    }
+    
     control_mode_out_ = out_mode;
 
     flags_.ref_received = false;
     flags_.state_received = false;
+
+    controller_handler_->resetError();
+    resetReferences();
 
     last_time_ = node_ptr_->now();
 
@@ -185,26 +198,26 @@ namespace controller_plugin_speed_controller
   };
 
   void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
-                               geometry_msgs::msg::TwistStamped &twist,
-                               as2_msgs::msg::Thrust &thrust)
+                             geometry_msgs::msg::TwistStamped &twist,
+                             as2_msgs::msg::Thrust &thrust)
   {
     if (!flags_.state_received)
     {
-      auto& clk = *node_ptr_->get_clock();
+      auto &clk = *node_ptr_->get_clock();
       RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State not received yet");
       return;
     }
 
     if (!flags_.parameters_read)
     {
-      auto& clk = *node_ptr_->get_clock();
+      auto &clk = *node_ptr_->get_clock();
       RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Parameters not read yet");
       return;
     }
 
     if (!flags_.ref_received)
     {
-      auto& clk = *node_ptr_->get_clock();
+      auto &clk = *node_ptr_->get_clock();
       RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State changed, but ref not recived yet");
       return;
     }
@@ -218,8 +231,8 @@ namespace controller_plugin_speed_controller
   };
 
   void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
-                                geometry_msgs::msg::TwistStamped &twist,
-                                as2_msgs::msg::Thrust &thrust)
+                              geometry_msgs::msg::TwistStamped &twist,
+                              as2_msgs::msg::Thrust &thrust)
   {
     resetCommands();
 
@@ -233,12 +246,12 @@ namespace controller_plugin_speed_controller
     {
       computePositionControl(dt);
       break;
-    } 
+    }
     case as2_msgs::msg::ControlMode::POSITION:
     {
       computePositionControl(dt);
       break;
-    } 
+    }
     case as2_msgs::msg::ControlMode::SPEED:
     {
       // control_command_.vel = control_ref_.vel;
@@ -248,7 +261,7 @@ namespace controller_plugin_speed_controller
           dt);
 
       break;
-    } 
+    }
     case as2_msgs::msg::ControlMode::TRAJECTORY:
     {
       control_command_.vel = controller_handler_->computeTrayectoryControl(
@@ -256,9 +269,9 @@ namespace controller_plugin_speed_controller
           control_ref_,
           dt);
       break;
-    } 
+    }
     default:
-      auto& clk = *node_ptr_->get_clock();
+      auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown control mode");
       return;
       break;
@@ -267,25 +280,25 @@ namespace controller_plugin_speed_controller
     switch (control_mode_in_.yaw_mode)
     {
     case as2_msgs::msg::ControlMode::YAW_ANGLE:
-    {    
+    {
       tf2::Matrix3x3 m(uav_state_.rot);
       double roll, pitch, yaw;
       m.getRPY(roll, pitch, yaw);
-      
+
       control_command_.yaw[1] = controller_handler_->computeYawSpeed(
           yaw,
-          (double) control_ref_.yaw[0],
+          (double)control_ref_.yaw[0],
           dt);
 
       break;
     }
     case as2_msgs::msg::ControlMode::YAW_SPEED:
-    {  
+    {
       control_command_.yaw[1] = control_ref_.yaw[1];
       break;
     }
     default:
-      auto& clk = *node_ptr_->get_clock();
+      auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown yaw mode");
       return;
       break;
@@ -299,7 +312,7 @@ namespace controller_plugin_speed_controller
       break;
     }
     default:
-      auto& clk = *node_ptr_->get_clock();
+      auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
       return;
       break;
@@ -311,9 +324,9 @@ namespace controller_plugin_speed_controller
   void Plugin::computePositionControl(const double &dt)
   {
     control_command_.vel = controller_handler_->computePositionControl(
-          uav_state_,
-          control_ref_,
-          dt);
+        uav_state_,
+        control_ref_,
+        dt);
 
     // Delimit the speed for each axis
     for (short j = 0; j < 3; j++)
@@ -322,7 +335,7 @@ namespace controller_plugin_speed_controller
       {
         continue;
       }
-      control_command_.vel[j] = (control_command_.vel[j] >  speed_limits_[j]) ?  speed_limits_[j] : control_command_.vel[j];
+      control_command_.vel[j] = (control_command_.vel[j] > speed_limits_[j]) ? speed_limits_[j] : control_command_.vel[j];
       control_command_.vel[j] = (control_command_.vel[j] < -speed_limits_[j]) ? -speed_limits_[j] : control_command_.vel[j];
     }
 
@@ -330,8 +343,8 @@ namespace controller_plugin_speed_controller
   };
 
   void Plugin::getOutput(geometry_msgs::msg::PoseStamped &pose_msg,
-                           geometry_msgs::msg::TwistStamped &twist_msg,
-                           as2_msgs::msg::Thrust &thrust_msg)
+                         geometry_msgs::msg::TwistStamped &twist_msg,
+                         as2_msgs::msg::Thrust &thrust_msg)
   {
     twist_msg.header.stamp = node_ptr_->now();
 
@@ -391,7 +404,7 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-    void Plugin::resetState()
+  void Plugin::resetState()
   {
     uav_state_.pos = Vector3d::Zero();
     uav_state_.vel = Vector3d::Zero();
