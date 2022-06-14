@@ -137,28 +137,28 @@ namespace speed_controller
                            parameters_["trajectory_following.position_Kd.z"])
                            .asDiagonal();
 
-    speed_Kp_lin_mat_ = Vector3d(
-                               parameters_["speed_following.speed_Kp.x"],
-                               parameters_["speed_following.speed_Kp.y"],
-                               parameters_["speed_following.speed_Kp.z"])
-                               .asDiagonal();
-
-    speed_Ki_lin_mat_ = Vector3d(
-                               parameters_["speed_following.speed_Ki.x"],
-                               parameters_["speed_following.speed_Ki.y"],
-                               parameters_["speed_following.speed_Ki.z"])
-                               .asDiagonal();
-
-    speed_Kd_lin_mat_ = Vector3d(
-                               parameters_["speed_following.speed_Kd.x"],
-                               parameters_["speed_following.speed_Kd.y"],
-                               parameters_["speed_following.speed_Kd.z"])
-                               .asDiagonal();
-
     yaw_ang_mat_ = Vector3d(
                       parameters_["yaw_speed_controller.Kp"],
                       parameters_["yaw_speed_controller.Ki"],
                       parameters_["yaw_speed_controller.Kd"]);
+
+    // speed_Kp_lin_mat_ = Vector3d(
+    //                            parameters_["speed_following.speed_Kp.x"],
+    //                            parameters_["speed_following.speed_Kp.y"],
+    //                            parameters_["speed_following.speed_Kp.z"])
+    //                            .asDiagonal();
+
+    // speed_Ki_lin_mat_ = Vector3d(
+    //                            parameters_["speed_following.speed_Ki.x"],
+    //                            parameters_["speed_following.speed_Ki.y"],
+    //                            parameters_["speed_following.speed_Ki.z"])
+    //                            .asDiagonal();
+
+    // speed_Kd_lin_mat_ = Vector3d(
+    //                            parameters_["speed_following.speed_Kd.x"],
+    //                            parameters_["speed_following.speed_Kd.y"],
+    //                            parameters_["speed_following.speed_Kd.z"])
+    //                            .asDiagonal();
 
     return;
   };
@@ -200,14 +200,14 @@ namespace speed_controller
 
     // Compute desired speed
     Vector3d desired_speed = p_position_error_contribution + d_position_error_contribution + i_position_error_contribution;
+    return desired_speed;
 
-    Control_ref desired_speed_ref = ref;
-    desired_speed_ref.vel = desired_speed;
-
-    return computeSpeedControl(
-        state,
-        desired_speed_ref,
-        dt);
+    // Control_ref desired_speed_ref = ref;
+    // desired_speed_ref.vel = desired_speed;
+    // return computeSpeedControl(
+    //     state,
+    //     desired_speed_ref,
+    //     dt);
   };
 
 

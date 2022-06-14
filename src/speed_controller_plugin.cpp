@@ -254,11 +254,13 @@ namespace controller_plugin_speed_controller
     }
     case as2_msgs::msg::ControlMode::SPEED:
     {
-      // control_command_.vel = control_ref_.vel;
-      control_command_.vel = controller_handler_->computeSpeedControl(
-          uav_state_,
-          control_ref_,
-          dt);
+      // Bypass velocity control reference to velocity control command
+      control_command_.vel = control_ref_.vel;
+      
+      // control_command_.vel = controller_handler_->computeSpeedControl(
+      //     uav_state_,
+      //     control_ref_,
+      //     dt);
 
       break;
     }
