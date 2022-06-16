@@ -173,7 +173,7 @@ namespace controller_plugin_speed_controller
   bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
                        const as2_msgs::msg::ControlMode &out_mode)
   {
-    if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::HOVER)
+    if (in_mode.control_mode == as2_msgs::msg::ControlMode::HOVER)
     {
       control_mode_in_.control_mode = in_mode.control_mode;
       control_mode_in_.yaw_mode = as2_msgs::msg::ControlMode::YAW_ANGLE;
@@ -181,13 +181,12 @@ namespace controller_plugin_speed_controller
     }
     else
     {
+      flags_.ref_received = false;
+      flags_.state_received = false;
       control_mode_in_ = in_mode;
     }
     
     control_mode_out_ = out_mode;
-
-    flags_.ref_received = false;
-    flags_.state_received = false;
 
     controller_handler_->resetError();
     resetReferences();
