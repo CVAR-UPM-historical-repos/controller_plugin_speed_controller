@@ -106,6 +106,7 @@ namespace controller_plugin_speed_controller
     std::shared_ptr<SpeedController> controller_handler_;
 
     std::vector<std::string> parameters_to_read_ = {
+        "proportional_limitation",
         "antiwindup_cte",
         "alpha",
         "position_following.position_Kp.x",
@@ -148,6 +149,8 @@ namespace controller_plugin_speed_controller
 
     UAV_state uav_hover_state_;
   
+    bool proportional_limitation_ = false;
+
   private:
     void declareParameters();
 

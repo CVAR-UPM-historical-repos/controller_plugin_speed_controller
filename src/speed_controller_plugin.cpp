@@ -330,16 +330,31 @@ namespace controller_plugin_speed_controller
         dt);
 
     // Delimit the speed for each axis
-    for (short j = 0; j < 3; j++)
+    if (proportional_limitation_)
     {
-      if (speed_limits_[j] == 0.0f)
+      for (short j = 0; j < 3; j++)
       {
-        continue;
-      }
-      control_command_.vel[j] = (control_command_.vel[j] > speed_limits_[j]) ? speed_limits_[j] : control_command_.vel[j];
-      control_command_.vel[j] = (control_command_.vel[j] < -speed_limits_[j]) ? -speed_limits_[j] : control_command_.vel[j];
-    }
+        if (speed_limits_[j] == 0.0f || control_command_.vel[j] == 0.0) {continue;};
 
+        if (control_command_.vel[j] > speed_limits_[j] || control_command_.vel[j] < -speed_limits_[j])
+        {
+            control_command_.vel *= std::abs(speed_limits_[j] / control_command_.vel[j]);
+        }
+      }
+    }
+    else
+    {
+      for (short j = 0; j < 3; j++)
+      {
+        if (speed_limits_[j] == 0.0f)
+        {
+          continue;
+        }
+        control_command_.vel[j] = (control_command_.vel[j] > speed_limits_[j]) ? speed_limits_[j] : control_command_.vel[j];
+        control_command_.vel[j] = (control_command_.vel[j] < -speed_limits_[j]) ? -speed_limits_[j] : control_command_.vel[j];
+      }
+    }
+    
     return;
   };
 
@@ -368,9 +383,21 @@ namespace controller_plugin_speed_controller
 
     for (auto &param : parameters)
     {
-      if (controller_handler_->isParameter(param.get_name()))
+      if (find(parameters_to_read_.begin(), parameters_to_read_.end(), param.get_name()) != parameters_to_read_.end())
       {
-        controller_handler_->setParameter(param.get_name(), param.get_value<double>());
+        if (param.get_name() == "proportional_limitation")
+        {
+          proportional_limitation_ = param.get_value<bool>();
+        }
+        else if (controller_handler_->isParameter(param.get_name()))
+        {
+          controller_handler_->setParameter(param.get_name(), param.get_value<double>());
+        }
+        else
+        {
+          RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not expected", param.get_name().c_str());
+          continue;
+        }
 
         // Remove the parameter from the list of parameters to be read
         parameters_to_read_.erase(
@@ -397,11 +424,13 @@ namespace controller_plugin_speed_controller
 
   void Plugin::declareParameters()
   {
-    std::vector<std::pair<std::string, double>> params = controller_handler_->getParametersList();
-    for (auto &param : params)
+    std::vector<std::string> params_to_declare(parameters_to_read_);
+
+    for (int i=0; i<params_to_declare.size(); i++)
     {
-      node_ptr_->declare_parameter(param.first);
+      node_ptr_->declare_parameter(params_to_declare[i]);
     }
+
     return;
   };
 
