@@ -80,7 +80,8 @@ namespace controller_plugin_speed_controller
 
   public:
     void ownInitialize() override;
-    void updateState(const nav_msgs::msg::Odometry &odom) override;
+    void updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
+                     const geometry_msgs::msg::TwistStamped &twist_msg) override;
 
     void updateReference(const geometry_msgs::msg::PoseStamped &ref) override;
     void updateReference(const geometry_msgs::msg::TwistStamped &ref) override;

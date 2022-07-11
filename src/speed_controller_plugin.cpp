@@ -58,23 +58,24 @@ namespace controller_plugin_speed_controller
     return;
   };
 
-  void Plugin::updateState(const nav_msgs::msg::Odometry &odom_msg)
+  void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
+                           const geometry_msgs::msg::TwistStamped &twist_msg)
   {
     uav_state_.pos = Vector3d(
-        odom_msg.pose.pose.position.x,
-        odom_msg.pose.pose.position.y,
-        odom_msg.pose.pose.position.z);
+        pose_msg.pose.position.x,
+        pose_msg.pose.position.y,
+        pose_msg.pose.position.z);
 
     uav_state_.vel = Vector3d(
-        odom_msg.twist.twist.linear.x,
-        odom_msg.twist.twist.linear.y,
-        odom_msg.twist.twist.linear.z);
+        twist_msg.twist.linear.x,
+        twist_msg.twist.linear.y,
+        twist_msg.twist.linear.z);
 
     tf2::Quaternion q_tf(
-        odom_msg.pose.pose.orientation.x,
-        odom_msg.pose.pose.orientation.y,
-        odom_msg.pose.pose.orientation.z,
-        odom_msg.pose.pose.orientation.w);
+        pose_msg.pose.orientation.x,
+        pose_msg.pose.orientation.y,
+        pose_msg.pose.orientation.z,
+        pose_msg.pose.orientation.w);
 
     uav_state_.rot = q_tf;
 
