@@ -429,7 +429,7 @@ namespace controller_plugin_speed_controller
 
     for (int i=0; i<params_to_declare.size(); i++)
     {
-      node_ptr_->declare_parameter(params_to_declare[i]);
+      node_ptr_->declare_parameter(params_to_declare[i]);  // TODO: WARNING on galactic and advance
     }
 
     return;
