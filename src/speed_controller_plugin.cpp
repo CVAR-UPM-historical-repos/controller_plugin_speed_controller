@@ -239,6 +239,11 @@ namespace controller_plugin_speed_controller
     rclcpp::Time current_time = node_ptr_->now();
     double dt = (current_time - last_time_).nanoseconds() / 1.0e9;
     last_time_ = current_time;
+    if (dt == 0)
+    {
+      RCLCPP_WARN(node_ptr_->get_logger(), "dt is zero");
+      return;
+    }
 
     switch (control_mode_in_.control_mode)
     {
@@ -412,6 +417,10 @@ namespace controller_plugin_speed_controller
           RCLCPP_DEBUG(node_ptr_->get_logger(), "All parameters read");
           flags_.parameters_read = true;
         }
+      }
+      else if (param.get_name() == "use_sim_time")
+      {
+        continue;
       }
       else
       {
