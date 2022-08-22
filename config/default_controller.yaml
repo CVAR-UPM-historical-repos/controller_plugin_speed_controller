@@ -1,6 +1,5 @@
 /**:
   ros__parameters:
-    use_sim_time: false
     proportional_limitation : true
     antiwindup_cte : 1.0
     alpha: 0.3

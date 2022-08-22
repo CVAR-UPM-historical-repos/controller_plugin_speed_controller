@@ -420,6 +420,7 @@ namespace controller_plugin_speed_controller
       }
       else if (param.get_name() == "use_sim_time")
       {
+        RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not expected", param.get_name().c_str());
         continue;
       }
       else
