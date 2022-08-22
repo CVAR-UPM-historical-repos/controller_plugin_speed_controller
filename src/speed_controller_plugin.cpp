@@ -241,7 +241,7 @@ namespace controller_plugin_speed_controller
     last_time_ = current_time;
     if (dt == 0)
     {
-      RCLCPP_WARN(node_ptr_->get_logger(), "dt is zero");
+      RCLCPP_WARN_ONCE(node_ptr_->get_logger(), "Loop delta time is zero");
       return;
     }
 
