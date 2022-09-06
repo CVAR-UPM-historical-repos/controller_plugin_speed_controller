@@ -86,7 +86,13 @@ namespace speed_controller
     return true;
   };
 
-  std::vector<std::pair<std::string, double>> SpeedController::getParametersList()
+  bool SpeedController::getParametersList(std::vector<std::string> &param_list)
+  {
+    param_list = parameters_list_;
+    return true;
+  };
+
+  std::vector<std::pair<std::string, double>> SpeedController::getParametersMap()
   {
     std::vector<std::pair<std::string, double>> list;
     for (auto &param : parameters_)
@@ -100,6 +106,7 @@ namespace speed_controller
   {
     antiwindup_cte_ = parameters_["antiwindup_cte"];
     alpha_ = parameters_["alpha"];
+    // reset_integral_flag_ = parameters_["reset_integral_flag"];
 
     position_Kp_lin_mat_ = Vector3d(
                                parameters_["position_following.position_Kp.x"],
@@ -184,6 +191,21 @@ namespace speed_controller
     // Compute the derivate contribution (velocity error)
     Vector3d d_position_error_contribution = position_Kd_lin_mat_ * filtered_d_position_error_ / dt;
 
+    if (reset_integral_flag_ != 0)
+    {
+      for (short j = 0; j < 3; j++)
+      {
+          bool pos_sign = position_error[j] < 0;
+          bool last_pos_sign = last_position_error_[j] < 0;
+
+          // Reset integral contribution if sign has changed
+          if (pos_sign != last_pos_sign &&
+              (position_accum_error_[j] >= antiwindup_cte_ || position_accum_error_[j] <= -antiwindup_cte_))
+          {
+              position_accum_error_[j] = 0.0;
+          }
+      }
+    }
     // Update de acumulated error
     position_accum_error_ += position_error * dt;
 

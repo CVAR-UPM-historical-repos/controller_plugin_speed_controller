@@ -44,6 +44,7 @@ namespace controller_plugin_speed_controller
     flags_.parameters_read = false;
     flags_.state_received = false;
     flags_.ref_received = false;
+    speed_limits_ = Vector3d::Zero();
 
     controller_handler_ = std::make_shared<SpeedController>();
 
@@ -391,22 +392,32 @@ namespace controller_plugin_speed_controller
 
     for (auto &param : parameters)
     {
-      if (find(parameters_to_read_.begin(), parameters_to_read_.end(), param.get_name()) != parameters_to_read_.end())
+      if (find(parameters_list_.begin(), parameters_list_.end(), param.get_name()) != parameters_list_.end())
       {
         if (param.get_name() == "proportional_limitation")
         {
           proportional_limitation_ = param.get_value<bool>();
         }
-        else if (controller_handler_->isParameter(param.get_name()))
+      }
+      else
+      {
+        std::vector<std::string> controller_handler_params;
+        controller_handler_->getParametersList(controller_handler_params);
+        if (find(controller_handler_params.begin(), controller_handler_params.end(), param.get_name()) != controller_handler_params.end())
         {
           controller_handler_->setParameter(param.get_name(), param.get_value<double>());
         }
         else
         {
-          RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not expected", param.get_name().c_str());
-          continue;
+          RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not defined in controller params",
+                      param.get_name().c_str());
+          result.successful = false;
+          result.reason = "parameter not found";
         }
+      }
 
+      if (!flags_.parameters_read && find(parameters_to_read_.begin(), parameters_to_read_.end(), param.get_name()) != parameters_to_read_.end())
+      {
         // Remove the parameter from the list of parameters to be read
         parameters_to_read_.erase(
             std::remove(
@@ -414,22 +425,12 @@ namespace controller_plugin_speed_controller
                 parameters_to_read_.end(),
                 param.get_name()),
             parameters_to_read_.end());
-        if (parameters_to_read_.empty())
+
+        if (parameters_to_read_.size() == 0)
         {
-          RCLCPP_DEBUG(node_ptr_->get_logger(), "All parameters read");
+          RCLCPP_INFO(node_ptr_->get_logger(), "All parameters read");
           flags_.parameters_read = true;
         }
-      }
-      else if (param.get_name() == "use_sim_time")
-      {
-        RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not expected", param.get_name().c_str());
-        continue;
-      }
-      else
-      {
-        RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not defined in controller params", param.get_name().c_str());
-        result.successful = false;
-        result.reason = "parameter not found";
       }
     }
     return result;
@@ -437,13 +438,18 @@ namespace controller_plugin_speed_controller
 
   void Plugin::declareParameters()
   {
-    std::vector<std::string> params_to_declare(parameters_to_read_);
+    std::vector<std::string> controller_handler_params;
+    controller_handler_->getParametersList(controller_handler_params);
 
-    for (int i=0; i<params_to_declare.size(); i++)
+    parameters_to_read_.insert(parameters_to_read_.end(), parameters_list_.begin(), parameters_list_.end());
+    parameters_to_read_.insert(parameters_to_read_.end(), controller_handler_params.begin(), controller_handler_params.end());
+
+    std::vector<std::string> parameters_to_declare(parameters_to_read_);
+
+    for (int i=0; i<parameters_to_declare.size(); i++)
     {
-      node_ptr_->declare_parameter(params_to_declare[i]);  // TODO: WARNING on galactic and advance
+      node_ptr_->declare_parameter(parameters_to_declare[i]);  // TODO: WARNING on galactic and advance
     }
-
     return;
   };
 
