@@ -393,9 +393,12 @@ void Plugin::declareParameters() {
 
   std::vector<std::string> parameters_to_declare(parameters_to_read_);
 
+  rcl_interfaces::msg::ParameterDescriptor descriptor;
+  descriptor.dynamic_typing = true;
+
   for (int i = 0; i < parameters_to_declare.size(); i++) {
-    node_ptr_->declare_parameter(
-        parameters_to_declare[i]);  // TODO: WARNING on galactic and advance
+    node_ptr_->declare_parameter(parameters_to_declare[i],
+                                 rclcpp::ParameterValue{}, descriptor);
   }
   return;
 };

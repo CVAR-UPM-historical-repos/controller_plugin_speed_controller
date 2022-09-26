@@ -36,10 +36,11 @@
 #ifndef __SC_CONTROLLER_H__
 #define __SC_CONTROLLER_H__
 
-#include <Eigen/src/Core/Matrix.h>
+// #include <Eigen/src/Core/Matrix.h>
 #include <math.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <iostream>
 #include <unordered_map>
 
