@@ -40,15 +40,14 @@ namespace controller_plugin_speed_controller {
 
 void Plugin::ownInitialize() {
   flags_.parameters_read = false;
-  flags_.state_received = false;
-  flags_.ref_received = false;
-  speed_limits_ = Vector3d::Zero();
+  flags_.state_received  = false;
+  flags_.ref_received    = false;
+  speed_limits_          = Vector3d::Zero();
 
   controller_handler_ = std::make_shared<SpeedController>();
 
-  static auto parameters_callback_handle_ =
-      node_ptr_->add_on_set_parameters_callback(
-          std::bind(&Plugin::parametersCallback, this, std::placeholders::_1));
+  static auto parameters_callback_handle_ = node_ptr_->add_on_set_parameters_callback(
+      std::bind(&Plugin::parametersCallback, this, std::placeholders::_1));
 
   declareParameters();
 
@@ -60,15 +59,14 @@ void Plugin::ownInitialize() {
 
 void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
                          const geometry_msgs::msg::TwistStamped &twist_msg) {
-  uav_state_.pos = Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y,
-                            pose_msg.pose.position.z);
+  uav_state_.pos =
+      Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z);
 
-  uav_state_.vel = Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y,
-                            twist_msg.twist.linear.z);
+  uav_state_.vel =
+      Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
 
   tf2::Quaternion q_tf(pose_msg.pose.orientation.x, pose_msg.pose.orientation.y,
-                       pose_msg.pose.orientation.z,
-                       pose_msg.pose.orientation.w);
+                       pose_msg.pose.orientation.z, pose_msg.pose.orientation.w);
 
   uav_state_.rot = q_tf;
 
@@ -79,8 +77,7 @@ void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
 void Plugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg) {
   if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) {
     control_ref_.pos =
-        Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y,
-                 pose_msg.pose.position.z);
+        Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z);
 
     flags_.ref_received = true;
   }
@@ -101,11 +98,10 @@ void Plugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg) {
   return;
 };
 
-void Plugin::updateReference(
-    const geometry_msgs::msg::TwistStamped &twist_msg) {
+void Plugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg) {
   if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) {
-    speed_limits_ = Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y,
-                             twist_msg.twist.linear.z);
+    speed_limits_ =
+        Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
     return;
   }
 
@@ -114,8 +110,7 @@ void Plugin::updateReference(
   }
 
   control_ref_.vel =
-      Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y,
-               twist_msg.twist.linear.z);
+      Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
 
   if (control_mode_in_.yaw_mode == as2_msgs::msg::ControlMode::YAW_SPEED) {
     control_ref_.yaw[1] = twist_msg.twist.angular.z;
@@ -125,20 +120,18 @@ void Plugin::updateReference(
   return;
 };
 
-void Plugin::updateReference(
-    const trajectory_msgs::msg::JointTrajectoryPoint &traj_msg) {
+void Plugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &traj_msg) {
   if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::TRAJECTORY) {
     return;
   }
 
-  control_ref_.pos = Vector3d(traj_msg.positions[0], traj_msg.positions[1],
-                              traj_msg.positions[2]);
+  control_ref_.pos = Vector3d(traj_msg.positions[0], traj_msg.positions[1], traj_msg.positions[2]);
 
-  control_ref_.vel = Vector3d(traj_msg.velocities[0], traj_msg.velocities[1],
-                              traj_msg.velocities[2]);
+  control_ref_.vel =
+      Vector3d(traj_msg.velocities[0], traj_msg.velocities[1], traj_msg.velocities[2]);
 
-  control_ref_.yaw = Vector3d(traj_msg.positions[3], traj_msg.velocities[3],
-                              traj_msg.accelerations[3]);
+  control_ref_.yaw =
+      Vector3d(traj_msg.positions[3], traj_msg.velocities[3], traj_msg.accelerations[3]);
 
   flags_.ref_received = true;
   return;
@@ -147,14 +140,13 @@ void Plugin::updateReference(
 bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
                      const as2_msgs::msg::ControlMode &out_mode) {
   if (in_mode.control_mode == as2_msgs::msg::ControlMode::HOVER) {
-    control_mode_in_.control_mode = in_mode.control_mode;
-    control_mode_in_.yaw_mode = as2_msgs::msg::ControlMode::YAW_ANGLE;
-    control_mode_in_.reference_frame =
-        as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME;
+    control_mode_in_.control_mode    = in_mode.control_mode;
+    control_mode_in_.yaw_mode        = as2_msgs::msg::ControlMode::YAW_ANGLE;
+    control_mode_in_.reference_frame = as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME;
   } else {
-    flags_.ref_received = false;
+    flags_.ref_received   = false;
     flags_.state_received = false;
-    control_mode_in_ = in_mode;
+    control_mode_in_      = in_mode;
   }
 
   control_mode_out_ = out_mode;
@@ -172,15 +164,13 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
                            as2_msgs::msg::Thrust &thrust) {
   if (!flags_.state_received) {
     auto &clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                         "State not received yet");
+    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State not received yet");
     return;
   }
 
   if (!flags_.parameters_read) {
     auto &clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                         "Parameters not read yet");
+    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Parameters not read yet");
     return;
   }
 
@@ -201,8 +191,8 @@ void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
                             geometry_msgs::msg::TwistStamped &twist,
                             as2_msgs::msg::Thrust &thrust) {
   rclcpp::Time current_time = node_ptr_->now();
-  double dt = (current_time - last_time_).nanoseconds() / 1.0e9;
-  last_time_ = current_time;
+  double dt                 = (current_time - last_time_).nanoseconds() / 1.0e9;
+  last_time_                = current_time;
   if (dt == 0) {
     // Send last command reference
     getOutput(pose, twist, thrust);
@@ -233,14 +223,13 @@ void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
       break;
     }
     case as2_msgs::msg::ControlMode::TRAJECTORY: {
-      control_command_.vel = controller_handler_->computeTrayectoryControl(
-          uav_state_, control_ref_, dt);
+      control_command_.vel =
+          controller_handler_->computeTrayectoryControl(uav_state_, control_ref_, dt);
       break;
     }
     default:
       auto &clk = *node_ptr_->get_clock();
-      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                            "Unknown control mode");
+      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown control mode");
       return;
       break;
   }
@@ -251,8 +240,8 @@ void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
       double roll, pitch, yaw;
       m.getRPY(roll, pitch, yaw);
 
-      control_command_.yaw[1] = controller_handler_->computeYawSpeed(
-          yaw, (double)control_ref_.yaw[0], dt);
+      control_command_.yaw[1] =
+          controller_handler_->computeYawSpeed(yaw, (double)control_ref_.yaw[0], dt);
 
       break;
     }
@@ -262,8 +251,7 @@ void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
     }
     default:
       auto &clk = *node_ptr_->get_clock();
-      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                            "Unknown yaw mode");
+      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown yaw mode");
       return;
       break;
   }
@@ -275,8 +263,7 @@ void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
     }
     default:
       auto &clk = *node_ptr_->get_clock();
-      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                            "Unknown reference frame");
+      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
       return;
       break;
   }
@@ -285,8 +272,7 @@ void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
 };
 
 void Plugin::computePositionControl(const double &dt) {
-  control_command_.vel =
-      controller_handler_->computePositionControl(uav_state_, control_ref_, dt);
+  control_command_.vel = controller_handler_->computePositionControl(uav_state_, control_ref_, dt);
 
   // Delimit the speed for each axis
   if (proportional_limitation_) {
@@ -297,8 +283,7 @@ void Plugin::computePositionControl(const double &dt) {
 
       if (control_command_.vel[j] > speed_limits_[j] ||
           control_command_.vel[j] < -speed_limits_[j]) {
-        control_command_.vel *=
-            std::abs(speed_limits_[j] / control_command_.vel[j]);
+        control_command_.vel *= std::abs(speed_limits_[j] / control_command_.vel[j]);
       }
     }
   } else {
@@ -306,9 +291,8 @@ void Plugin::computePositionControl(const double &dt) {
       if (speed_limits_[j] == 0.0f) {
         continue;
       }
-      control_command_.vel[j] = (control_command_.vel[j] > speed_limits_[j])
-                                    ? speed_limits_[j]
-                                    : control_command_.vel[j];
+      control_command_.vel[j] =
+          (control_command_.vel[j] > speed_limits_[j]) ? speed_limits_[j] : control_command_.vel[j];
       control_command_.vel[j] = (control_command_.vel[j] < -speed_limits_[j])
                                     ? -speed_limits_[j]
                                     : control_command_.vel[j];
@@ -338,38 +322,33 @@ rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(
     const std::vector<rclcpp::Parameter> &parameters) {
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
-  result.reason = "success";
+  result.reason     = "success";
 
   for (auto &param : parameters) {
-    if (find(parameters_list_.begin(), parameters_list_.end(),
-             param.get_name()) != parameters_list_.end()) {
+    if (find(parameters_list_.begin(), parameters_list_.end(), param.get_name()) !=
+        parameters_list_.end()) {
       if (param.get_name() == "proportional_limitation") {
         proportional_limitation_ = param.get_value<bool>();
       }
     } else {
       std::vector<std::string> controller_handler_params;
       controller_handler_->getParametersList(controller_handler_params);
-      if (find(controller_handler_params.begin(),
-               controller_handler_params.end(),
+      if (find(controller_handler_params.begin(), controller_handler_params.end(),
                param.get_name()) != controller_handler_params.end()) {
-        controller_handler_->setParameter(param.get_name(),
-                                          param.get_value<double>());
+        controller_handler_->setParameter(param.get_name(), param.get_value<double>());
       } else {
-        RCLCPP_WARN(node_ptr_->get_logger(),
-                    "Parameter %s not defined in controller params",
+        RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not defined in controller params",
                     param.get_name().c_str());
         result.successful = false;
-        result.reason = "parameter not found";
+        result.reason     = "parameter not found";
       }
     }
 
-    if (!flags_.parameters_read &&
-        find(parameters_to_read_.begin(), parameters_to_read_.end(),
-             param.get_name()) != parameters_to_read_.end()) {
+    if (!flags_.parameters_read && find(parameters_to_read_.begin(), parameters_to_read_.end(),
+                                        param.get_name()) != parameters_to_read_.end()) {
       // Remove the parameter from the list of parameters to be read
       parameters_to_read_.erase(
-          std::remove(parameters_to_read_.begin(), parameters_to_read_.end(),
-                      param.get_name()),
+          std::remove(parameters_to_read_.begin(), parameters_to_read_.end(), param.get_name()),
           parameters_to_read_.end());
 
       if (parameters_to_read_.size() == 0) {
@@ -385,10 +364,9 @@ void Plugin::declareParameters() {
   std::vector<std::string> controller_handler_params;
   controller_handler_->getParametersList(controller_handler_params);
 
-  parameters_to_read_.insert(parameters_to_read_.end(),
-                             parameters_list_.begin(), parameters_list_.end());
-  parameters_to_read_.insert(parameters_to_read_.end(),
-                             controller_handler_params.begin(),
+  parameters_to_read_.insert(parameters_to_read_.end(), parameters_list_.begin(),
+                             parameters_list_.end());
+  parameters_to_read_.insert(parameters_to_read_.end(), controller_handler_params.begin(),
                              controller_handler_params.end());
 
   std::vector<std::string> parameters_to_declare(parameters_to_read_);
@@ -397,8 +375,7 @@ void Plugin::declareParameters() {
   descriptor.dynamic_typing = true;
 
   for (int i = 0; i < parameters_to_declare.size(); i++) {
-    node_ptr_->declare_parameter(parameters_to_declare[i],
-                                 rclcpp::ParameterValue{}, descriptor);
+    node_ptr_->declare_parameter(parameters_to_declare[i], rclcpp::ParameterValue{}, descriptor);
   }
   return;
 };

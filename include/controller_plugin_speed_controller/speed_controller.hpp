@@ -65,38 +65,37 @@ struct Control_command {
 };
 
 class SpeedController {
- public:
+public:
   SpeedController();
   ~SpeedController(){};
 
- public:
+public:
   bool setParameter(const std::string &param, const double &value);
   bool getParameter(const std::string &param, double &value);
   bool isParameter(const std::string &param);
-  bool setParametersList(
-      const std::vector<std::pair<std::string, double>> &parameter_list);
+  bool setParametersList(const std::vector<std::pair<std::string, double>> &parameter_list);
   bool getParametersList(std::vector<std::string> &param_list);
   std::vector<std::pair<std::string, double>> getParametersMap();
 
-  Vector3d computePositionControl(const UAV_state &state,
-                                  const Control_ref &ref, const double &dt);
+  Vector3d computePositionControl(const UAV_state &state, const Control_ref &ref, const double &dt);
 
   Vector3d computeTrayectoryControl(const UAV_state &state,
-                                    const Control_ref &ref, const double &dt);
+                                    const Control_ref &ref,
+                                    const double &dt);
 
-  Vector3d computeSpeedControl(const UAV_state &state, const Control_ref &ref,
-                               const double &dt);
+  Vector3d computeSpeedControl(const UAV_state &state, const Control_ref &ref, const double &dt);
 
   double computeYawSpeed(const double &yaw_angle_state,
-                         const double &yaw_angle_ref, const double &dt);
+                         const double &yaw_angle_ref,
+                         const double &dt);
 
   void resetError();
 
- private:
-  Eigen::Vector3d position_accum_error_ = Eigen::Vector3d::Zero();
+private:
+  Eigen::Vector3d position_accum_error_      = Eigen::Vector3d::Zero();
   Eigen::Vector3d traj_position_accum_error_ = Eigen::Vector3d::Zero();
-  Eigen::Vector3d speed_accum_error_ = Eigen::Vector3d::Zero();
-  double yaw_accum_error_ = 0.0;
+  Eigen::Vector3d speed_accum_error_         = Eigen::Vector3d::Zero();
+  double yaw_accum_error_                    = 0.0;
 
   std::unordered_map<std::string, double> parameters_ = {
       {"antiwindup_cte", 5.0},
@@ -142,15 +141,11 @@ class SpeedController {
       "position_following.position_Ki.y", "position_following.position_Ki.z",
       "position_following.position_Kd.x", "position_following.position_Kd.y",
       "position_following.position_Kd.z", "trajectory_following.position_Kp.x",
-      "trajectory_following.position_Kp.y",
-      "trajectory_following.position_Kp.z",
-      "trajectory_following.position_Ki.x",
-      "trajectory_following.position_Ki.y",
-      "trajectory_following.position_Ki.z",
-      "trajectory_following.position_Kd.x",
-      "trajectory_following.position_Kd.y",
-      "trajectory_following.position_Kd.z", "yaw_speed_controller.Kp",
-      "yaw_speed_controller.Ki", "yaw_speed_controller.Kd",
+      "trajectory_following.position_Kp.y", "trajectory_following.position_Kp.z",
+      "trajectory_following.position_Ki.x", "trajectory_following.position_Ki.y",
+      "trajectory_following.position_Ki.z", "trajectory_following.position_Kd.x",
+      "trajectory_following.position_Kd.y", "trajectory_following.position_Kd.z",
+      "yaw_speed_controller.Kp", "yaw_speed_controller.Ki", "yaw_speed_controller.Kd",
       // "speed_following.speed_Kp.x",
       // "speed_following.speed_Kp.y",
       // "speed_following.speed_Kp.z",
@@ -162,8 +157,8 @@ class SpeedController {
       // "speed_following.speed_Kd.z",
   };
 
-  float antiwindup_cte_ = 1.0f;
-  double alpha_ = 0.1;
+  float antiwindup_cte_       = 1.0f;
+  double alpha_               = 0.1;
   double reset_integral_flag_ = 0.0;
 
   Eigen::Matrix3d traj_Kp_lin_mat_ = Eigen::Matrix3d::Identity();
@@ -180,7 +175,7 @@ class SpeedController {
 
   Eigen::Vector3d yaw_ang_mat_ = Eigen::Vector3d::Identity();
 
- private:
+private:
   void updateGains_();
 };
 };  // namespace speed_controller

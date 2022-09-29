@@ -16,14 +16,14 @@ endif()
 set(PROJECT_DEPENDENCIES
   ament_cmake
   rclcpp
+  as2_core
+  as2_msgs
   geometry_msgs
   trajectory_msgs
   nav_msgs
   Eigen3
   yaml-cpp
   pluginlib
-  as2_core
-  as2_msgs
   controller_plugin_base
   tf2_geometry_msgs
 )
@@ -50,13 +50,11 @@ ament_target_dependencies(
 )
 
 if(BUILD_TESTING)
-
   find_package(ament_cmake_cppcheck REQUIRED)
   find_package(ament_cmake_clang_format REQUIRED)
   
   ament_cppcheck(src/ include/ tests/)
   ament_clang_format(src/ include/ tests/ --config ${CMAKE_CURRENT_SOURCE_DIR}/.clang-format)
-
 endif()
 
 pluginlib_export_plugin_description_file(controller_plugin_base plugins.xml)

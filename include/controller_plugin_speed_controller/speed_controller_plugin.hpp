@@ -57,10 +57,10 @@
 #include "speed_controller.hpp"
 
 namespace controller_plugin_speed_controller {
-using Vector3d = Eigen::Vector3d;
+using Vector3d        = Eigen::Vector3d;
 using SpeedController = speed_controller::SpeedController;
-using UAV_state = speed_controller::UAV_state;
-using Control_ref = speed_controller::Control_ref;
+using UAV_state       = speed_controller::UAV_state;
+using Control_ref     = speed_controller::Control_ref;
 using Control_command = speed_controller::Control_command;
 
 struct Control_flags {
@@ -71,19 +71,18 @@ struct Control_flags {
 };
 
 class Plugin : public controller_plugin_base::ControllerBase {
- public:
+public:
   Plugin(){};
   ~Plugin(){};
 
- public:
+public:
   void ownInitialize() override;
   void updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
                    const geometry_msgs::msg::TwistStamped &twist_msg) override;
 
   void updateReference(const geometry_msgs::msg::PoseStamped &ref) override;
   void updateReference(const geometry_msgs::msg::TwistStamped &ref) override;
-  void updateReference(
-      const trajectory_msgs::msg::JointTrajectoryPoint &ref) override;
+  void updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &ref) override;
 
   bool setMode(const as2_msgs::msg::ControlMode &mode_in,
                const as2_msgs::msg::ControlMode &mode_out) override;
@@ -95,7 +94,7 @@ class Plugin : public controller_plugin_base::ControllerBase {
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters);
 
- private:
+private:
   rclcpp::Time last_time_;
 
   as2_msgs::msg::ControlMode control_mode_in_;
@@ -119,7 +118,7 @@ class Plugin : public controller_plugin_base::ControllerBase {
 
   bool proportional_limitation_ = false;
 
- private:
+private:
   void declareParameters();
 
   void resetState();
