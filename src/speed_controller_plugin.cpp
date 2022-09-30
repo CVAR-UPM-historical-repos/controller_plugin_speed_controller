@@ -339,8 +339,7 @@ rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(
       } else {
         RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not defined in controller params",
                     param.get_name().c_str());
-        result.successful = false;
-        result.reason     = "parameter not found";
+        result.successful = true;
       }
     }
 
