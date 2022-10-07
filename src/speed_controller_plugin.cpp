@@ -46,15 +46,28 @@ void Plugin::ownInitialize() {
 
   controller_handler_ = std::make_shared<SpeedController>();
 
-  static auto parameters_callback_handle_ = node_ptr_->add_on_set_parameters_callback(
-      std::bind(&Plugin::parametersCallback, this, std::placeholders::_1));
+  /* static auto parameters_callback_handle_ = node_ptr_->add_on_set_parameters_callback(
+      std::bind(&Plugin::parametersCallback, this, std::placeholders::_1)); */
 
-  declareParameters();
+  // declareParameters();
+  //
+  //
 
   resetState();
   resetReferences();
   resetCommands();
   return;
+};
+
+void Plugin::reset() {
+  resetState();
+  resetReferences();
+  resetCommands();
+}
+
+bool Plugin::updateParams(const std::vector<std::string> &_params_list) {
+  auto result = parametersCallback(node_ptr_->get_parameters(_params_list));
+  return result.successful;
 };
 
 void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
@@ -323,6 +336,13 @@ rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   result.reason     = "success";
+
+  std::vector<std::string> controller_handler_params;
+  controller_handler_->getParametersList(controller_handler_params);
+  parameters_to_read_.insert(parameters_to_read_.end(), parameters_list_.begin(),
+                             parameters_list_.end());
+  parameters_to_read_.insert(parameters_to_read_.end(), controller_handler_params.begin(),
+                             controller_handler_params.end());
 
   for (auto &param : parameters) {
     if (find(parameters_list_.begin(), parameters_list_.end(), param.get_name()) !=

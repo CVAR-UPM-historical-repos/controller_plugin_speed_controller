@@ -91,6 +91,9 @@ public:
                      geometry_msgs::msg::TwistStamped &twist,
                      as2_msgs::msg::Thrust &thrust) override;
 
+  bool updateParams(const std::vector<std::string> &_params_list) override;
+  void reset() override;
+
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters);
 
