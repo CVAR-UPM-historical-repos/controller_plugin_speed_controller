@@ -12,6 +12,9 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+#set fPIC to ON by default
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # find dependencies
 set(PROJECT_DEPENDENCIES
   ament_cmake
@@ -22,10 +25,9 @@ set(PROJECT_DEPENDENCIES
   trajectory_msgs
   nav_msgs
   Eigen3
-  yaml-cpp
   pluginlib
   controller_plugin_base
-  tf2_geometry_msgs
+  pid_controller
 )
 
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
@@ -38,7 +40,7 @@ include_directories(
   ${EIGEN3_INCLUDE_DIRS}
 )
 
-add_library(${PROJECT_NAME} SHARED src/speed_controller.cpp src/speed_controller_plugin.cpp)
+add_library(${PROJECT_NAME} SHARED src/speed_controller_plugin.cpp)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

@@ -1,35 +1,58 @@
 /**:
   ros__parameters:
-    proportional_limitation : true
-    antiwindup_cte : 1.0
-    alpha: 0.3
-    trajectory_following:
-      position_Kp: 
-        x: 0.4
-        y: 0.4
-        z: 0.4
-      position_Ki:
-        x: 0.0001
-        y: 0.0001
-        z: 0.0001
-      position_Kd: 
+    proportional_limitation: true
+    position_control:
+      reset_integral: false
+      antiwindup_cte: 0.0
+      alpha: 0.0
+      kp:
         x: 0.0
         y: 0.0
         z: 0.0
-    position_following:
-      position_Kp: 
-        x: 1.0
-        y: 1.0
-        z: 1.0
-      position_Ki:
-        x: 0.0000
-        y: 0.0000
-        z: 0.0000
-      position_Kd: 
+      kd:
         x: 0.0
         y: 0.0
         z: 0.0
-    yaw_speed_controller:
-      Kp: 1.0
-      Ki: 0.001
-      Kd: 0.0
+      ki:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    speed_control:
+      reset_integral: false
+      antiwindup_cte: 0.0
+      alpha: 0.0
+      kp:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      kd:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      ki:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    trajectory_control:
+      reset_integral: false
+      antiwindup_cte: 0.0
+      alpha: 0.0
+      kp:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      kd:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      ki:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+    yaw_control:
+      reset_integral: false
+      antiwindup_cte: 0.0
+      alpha: 0.0
+      kp: 0.0
+      kd: 0.0
+      ki: 0.0
