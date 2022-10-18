@@ -334,17 +334,8 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                          "State changed, but ref not recived yet");
     return;
-  } else {
-    computeActions(pose, twist, thrust);
   }
 
-  static rclcpp::Time last_time_ = node_ptr_->now();
-  return;
-};
-
-void Plugin::computeActions(geometry_msgs::msg::PoseStamped &pose,
-                            geometry_msgs::msg::TwistStamped &twist,
-                            as2_msgs::msg::Thrust &thrust) {
   rclcpp::Time current_time = node_ptr_->now();
   double dt                 = (current_time - last_time_).nanoseconds() / 1.0e9;
   last_time_                = current_time;

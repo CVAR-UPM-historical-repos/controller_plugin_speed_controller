@@ -191,10 +191,6 @@ private:
   void resetReferences();
   void resetCommands();
 
-  void computeActions(geometry_msgs::msg::PoseStamped &pose,
-                      geometry_msgs::msg::TwistStamped &twist,
-                      as2_msgs::msg::Thrust &thrust);
-
   void getOutput(geometry_msgs::msg::TwistStamped &twist_msg, const std::string &frame_id);
 };
 };  // namespace controller_plugin_speed_controller
