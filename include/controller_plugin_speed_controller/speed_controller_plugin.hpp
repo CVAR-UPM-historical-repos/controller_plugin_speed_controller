@@ -82,7 +82,7 @@ struct Control_flags {
 
 class Plugin : public controller_plugin_base::ControllerBase {
 public:
-  Plugin():ControllerBase(1.0){};
+  Plugin(){};
   ~Plugin(){};
 
 public:
