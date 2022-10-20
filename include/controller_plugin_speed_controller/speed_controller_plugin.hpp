@@ -40,6 +40,7 @@
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <vector>
+#include <chrono>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <as2_core/utils/frame_utils.hpp>
@@ -81,7 +82,7 @@ struct Control_flags {
 
 class Plugin : public controller_plugin_base::ControllerBase {
 public:
-  Plugin(){};
+  Plugin():ControllerBase(1.0){};
   ~Plugin(){};
 
 public:
@@ -123,6 +124,7 @@ private:
 
   std::vector<std::string> plugin_parameters_list_ = {
       "proportional_limitation",
+      "use_bypass"
   };
 
   std::vector<std::string> position_control_parameters_list_ = {
@@ -163,12 +165,11 @@ private:
   UAV_state uav_state_;
   UAV_state control_ref_;
   UAV_command control_command_;
-  Eigen::Vector3d command_speed_;
-  double command_yaw_speed_;
 
   Eigen::Vector3d speed_limits_;
   double yaw_speed_limit_;
 
+  bool use_bypass_ = true;
   bool proportional_limitation_ = false;
   std::string enu_frame_id_     = "odom";
   std::string flu_frame_id_     = "base_link";
@@ -191,7 +192,7 @@ private:
   void resetReferences();
   void resetCommands();
 
-  void getOutput(geometry_msgs::msg::TwistStamped &twist_msg, const std::string &frame_id);
+  bool getOutput(geometry_msgs::msg::TwistStamped &twist_msg, const std::string &frame_id);
 };
 };  // namespace controller_plugin_speed_controller
 

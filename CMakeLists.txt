@@ -57,6 +57,9 @@ if(BUILD_TESTING)
   
   ament_cppcheck(src/ include/ tests/)
   ament_clang_format(src/ include/ tests/ --config ${CMAKE_CURRENT_SOURCE_DIR}/.clang-format)
+
+  include(tests/profiling.cmake)
+  include(tests/unit_test.cmake)
 endif()
 
 pluginlib_export_plugin_description_file(controller_plugin_base plugins.xml)
