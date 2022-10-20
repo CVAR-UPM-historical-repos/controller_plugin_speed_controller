@@ -37,37 +37,47 @@
 #ifndef __DF_PLUGIN_H__
 #define __DF_PLUGIN_H__
 
-// Std libraries
-#include <array>
-#include <iostream>
-#include <memory>
 #include <rclcpp/logging.hpp>
-#include <unordered_map>
+#include <rclcpp/rclcpp.hpp>
 #include <vector>
+#include <chrono>
 
-#include "as2_msgs/msg/thrust.hpp"
-#include "controller_plugin_base/controller_base.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "geometry_msgs/msg/twist_stamped.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
-#include "trajectory_msgs/msg/joint_trajectory_point.hpp"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <as2_core/utils/frame_utils.hpp>
+#include <as2_core/utils/tf_utils.hpp>
+#include <as2_msgs/msg/thrust.hpp>
+#include <controller_plugin_base/controller_base.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
+#include <trajectory_msgs/msg/joint_trajectory_point.hpp>
 
-#include "speed_controller.hpp"
+#include <pid_controller/PID.hpp>
+#include <pid_controller/PID_3D.hpp>
 
 namespace controller_plugin_speed_controller {
-using Vector3d        = Eigen::Vector3d;
-using SpeedController = speed_controller::SpeedController;
-using UAV_state       = speed_controller::UAV_state;
-using Control_ref     = speed_controller::Control_ref;
-using Control_command = speed_controller::Control_command;
+
+struct UAV_state {
+  std_msgs::msg::Header position_header = std_msgs::msg::Header();
+  Eigen::Vector3d position              = Eigen::Vector3d::Zero();
+  std_msgs::msg::Header velocity_header = std_msgs::msg::Header();
+  Eigen::Vector3d velocity              = Eigen::Vector3d::Zero();
+  Eigen::Vector3d yaw                   = Eigen::Vector3d::Zero();
+};
+
+struct UAV_command {
+  std_msgs::msg::Header velocity_header = std_msgs::msg::Header();
+  Eigen::Vector3d velocity              = Eigen::Vector3d::Zero();
+  double yaw_speed                      = 0.0;
+};
 
 struct Control_flags {
-  bool parameters_read;
   bool state_received;
   bool ref_received;
-  bool hover_mode_;
+  bool plugin_parameters_read;
+  bool position_controller_parameters_read;
+  bool velocity_controller_parameters_read;
+  bool trajectory_controller_parameters_read;
+  bool yaw_controller_parameters_read;
 };
 
 class Plugin : public controller_plugin_base::ControllerBase {
@@ -105,38 +115,84 @@ private:
 
   Control_flags flags_;
 
-  std::shared_ptr<SpeedController> controller_handler_;
+  std::shared_ptr<pid_controller::PIDController> pid_yaw_handler_;
+  std::shared_ptr<pid_controller::PIDController3D> pid_3D_position_handler_;
+  std::shared_ptr<pid_controller::PIDController3D> pid_3D_velocity_handler_;
+  std::shared_ptr<pid_controller::PIDController3D> pid_3D_trajectory_handler_;
 
-  std::vector<std::string> parameters_list_ = {"proportional_limitation"};
+  std::shared_ptr<as2::tf::TfHandler> tf_handler_;
 
-  std::vector<std::string> parameters_to_read_;
+  std::vector<std::string> plugin_parameters_list_ = {
+      "proportional_limitation",
+      "use_bypass"
+  };
+
+  std::vector<std::string> position_control_parameters_list_ = {
+      "position_control.reset_integral", "position_control.antiwindup_cte",
+      "position_control.alpha",          "position_control.kp.x",
+      "position_control.kp.y",           "position_control.kp.z",
+      "position_control.ki.x",           "position_control.ki.y",
+      "position_control.ki.z",           "position_control.kd.x",
+      "position_control.kd.y",           "position_control.kd.z"};
+
+  std::vector<std::string> velocity_control_parameters_list_ = {
+      "speed_control.reset_integral", "speed_control.antiwindup_cte", "speed_control.alpha",
+      "speed_control.kp.x",           "speed_control.kp.y",           "speed_control.kp.z",
+      "speed_control.ki.x",           "speed_control.ki.y",           "speed_control.ki.z",
+      "speed_control.kd.x",           "speed_control.kd.y",           "speed_control.kd.z"};
+
+  std::vector<std::string> trajectory_control_parameters_list_ = {
+      "trajectory_control.reset_integral", "trajectory_control.antiwindup_cte",
+      "trajectory_control.alpha",          "trajectory_control.kp.x",
+      "trajectory_control.kp.y",           "trajectory_control.kp.z",
+      "trajectory_control.ki.x",           "trajectory_control.ki.y",
+      "trajectory_control.ki.z",           "trajectory_control.kd.x",
+      "trajectory_control.kd.y",           "trajectory_control.kd.z"};
+
+  std::vector<std::string> yaw_control_parameters_list_ = {"yaw_control.reset_integral",
+                                                           "yaw_control.antiwindup_cte",
+                                                           "yaw_control.alpha",
+                                                           "yaw_control.kp",
+                                                           "yaw_control.ki",
+                                                           "yaw_control.kd"};
+
+  std::vector<std::string> plugin_parameters_to_read_;
+  std::vector<std::string> position_control_parameters_to_read_;
+  std::vector<std::string> velocity_control_parameters_to_read_;
+  std::vector<std::string> trajectory_control_parameters_to_read_;
+  std::vector<std::string> yaw_control_parameters_to_read_;
 
   UAV_state uav_state_;
-  Control_ref control_ref_;
-  Control_command control_command_;
+  UAV_state control_ref_;
+  UAV_command control_command_;
 
-  Vector3d speed_limits_;
+  Eigen::Vector3d speed_limits_;
+  double yaw_speed_limit_;
 
-  UAV_state uav_hover_state_;
-
+  bool use_bypass_ = true;
   bool proportional_limitation_ = false;
+  std::string enu_frame_id_     = "odom";
+  std::string flu_frame_id_     = "base_link";
 
 private:
-  void declareParameters();
+  void checkParamList(const std::string &param,
+                      std::vector<std::string> &_params_list,
+                      bool &_all_params_read);
+
+  void updateControllerParameter(const std::shared_ptr<pid_controller::PIDController> &_pid_handler,
+                                 const std::string &_parameter_name,
+                                 const rclcpp::Parameter &_param);
+
+  void updateController3DParameter(
+      const std::shared_ptr<pid_controller::PIDController3D> &_pid_handler,
+      const std::string &_parameter_name,
+      const rclcpp::Parameter &_param);
 
   void resetState();
   void resetReferences();
   void resetCommands();
 
-  void computePositionControl(const double &dt);
-
-  void computeActions(geometry_msgs::msg::PoseStamped &pose,
-                      geometry_msgs::msg::TwistStamped &twist,
-                      as2_msgs::msg::Thrust &thrust);
-
-  void getOutput(geometry_msgs::msg::PoseStamped &pose_msg,
-                 geometry_msgs::msg::TwistStamped &twist_msg,
-                 as2_msgs::msg::Thrust &thrust_msg);
+  bool getOutput(geometry_msgs::msg::TwistStamped &twist_msg, const std::string &frame_id);
 };
 };  // namespace controller_plugin_speed_controller
 
