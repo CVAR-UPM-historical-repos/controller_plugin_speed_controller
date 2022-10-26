@@ -201,7 +201,6 @@ void Plugin::reset() {
   pid_3D_trajectory_handler_->resetController();
   // Info: Yaw rate limit could be set if needed
   // pid_yaw_handler_->setOutputSaturation(yaw_speed_limit_);
-  last_time_ = node_ptr_->now();
 }
 
 void Plugin::resetState() {
@@ -321,44 +320,34 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
   return true;
 };
 
-void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
+bool Plugin::computeOutput(const double &dt,
+                           geometry_msgs::msg::PoseStamped &pose,
                            geometry_msgs::msg::TwistStamped &twist,
                            as2_msgs::msg::Thrust &thrust) {
   if (!flags_.state_received) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State not received yet");
-    return;
+    return false;
   }
 
   if (!flags_.plugin_parameters_read) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Parameters not read yet");
-    return;
+    return false;
   }
 
   if (!flags_.position_controller_parameters_read) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                          "Parameters for hover controller not read yet");
-    return;
+    return false;
   }
 
   if (!flags_.ref_received) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                          "State changed, but ref not recived yet");
-    return;
-  }
-
-  rclcpp::Time current_time = node_ptr_->now();
-  double dt                 = (current_time - last_time_).nanoseconds() / 1.0e9;
-  last_time_                = current_time;
-
-  if (dt == 0) {
-    auto &clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 1000,
-                         "Loop delta time is zero. Check your clock");
-    return;
+    return false;
   }
 
   resetCommands();
@@ -369,7 +358,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Position controller parameters not read yet");
-        return;
+        return false;
       }
 
       control_command_.velocity_header.frame_id = control_ref_.position_header.frame_id;
@@ -383,7 +372,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Position controller parameters not read yet");
-        return;
+        return false;
       }
 
       control_command_.velocity_header.frame_id = control_ref_.position_header.frame_id;
@@ -415,7 +404,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Trajectory controller parameters not read yet");
-        return;
+        return false;
       }
 
       control_command_.velocity =
@@ -426,7 +415,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
     default:
       auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown control mode");
-      return;
+      return false;
       break;
   }
 
@@ -436,7 +425,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Yaw controller parameters not read yet");
-        return;
+        return false;
       }
 
       double yaw_error = as2::frame::angleMinError(control_ref_.yaw.x(), uav_state_.yaw.x());
@@ -450,26 +439,26 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
     default:
       auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown yaw mode");
-      return;
+      return false;
       break;
   }
 
   switch (control_mode_out_.reference_frame) {
     case as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME: {
-      getOutput(twist, enu_frame_id_);
+      return getOutput(twist, enu_frame_id_);
       break;
     }
     case as2_msgs::msg::ControlMode::BODY_FLU_FRAME: {
-      getOutput(twist, flu_frame_id_);
+      return getOutput(twist, flu_frame_id_);
       break;
     }
     default:
       auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
-      return;
+      return false;
       break;
   }
-  return;
+  return false;
 }
 
 bool Plugin::getOutput(geometry_msgs::msg::TwistStamped &_twist_msg, const std::string &_frame_id) {

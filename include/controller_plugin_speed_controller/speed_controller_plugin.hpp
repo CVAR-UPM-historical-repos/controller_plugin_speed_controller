@@ -34,13 +34,13 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ********************************************************************************/
 
-#ifndef __DF_PLUGIN_H__
-#define __DF_PLUGIN_H__
+#ifndef __SP_PLUGIN_H__
+#define __SP_PLUGIN_H__
 
+#include <chrono>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <vector>
-#include <chrono>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <as2_core/utils/frame_utils.hpp>
@@ -97,7 +97,8 @@ public:
   bool setMode(const as2_msgs::msg::ControlMode &mode_in,
                const as2_msgs::msg::ControlMode &mode_out) override;
 
-  void computeOutput(geometry_msgs::msg::PoseStamped &pose,
+  bool computeOutput(const double &dt,
+                     geometry_msgs::msg::PoseStamped &pose,
                      geometry_msgs::msg::TwistStamped &twist,
                      as2_msgs::msg::Thrust &thrust) override;
 
@@ -108,8 +109,6 @@ public:
       const std::vector<rclcpp::Parameter> &parameters);
 
 private:
-  rclcpp::Time last_time_;
-
   as2_msgs::msg::ControlMode control_mode_in_;
   as2_msgs::msg::ControlMode control_mode_out_;
 
@@ -122,10 +121,7 @@ private:
 
   std::shared_ptr<as2::tf::TfHandler> tf_handler_;
 
-  std::vector<std::string> plugin_parameters_list_ = {
-      "proportional_limitation",
-      "use_bypass"
-  };
+  std::vector<std::string> plugin_parameters_list_ = {"proportional_limitation", "use_bypass"};
 
   std::vector<std::string> position_control_parameters_list_ = {
       "position_control.reset_integral", "position_control.antiwindup_cte",
@@ -169,7 +165,7 @@ private:
   Eigen::Vector3d speed_limits_;
   double yaw_speed_limit_;
 
-  bool use_bypass_ = true;
+  bool use_bypass_              = true;
   bool proportional_limitation_ = false;
   std::string enu_frame_id_     = "odom";
   std::string flu_frame_id_     = "base_link";
