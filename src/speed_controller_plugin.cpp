@@ -56,6 +56,14 @@ void Plugin::ownInitialize() {
 
   tf_handler_ = std::make_shared<as2::tf::TfHandler>(node_ptr_);
 
+  enu_frame_id_ = as2::tf::generateTfName(node_ptr_, enu_frame_id_);
+  flu_frame_id_ = as2::tf::generateTfName(node_ptr_, flu_frame_id_);
+
+  input_pose_frame_id_  = as2::tf::generateTfName(node_ptr_, input_pose_frame_id_);
+  input_twist_frame_id_ = as2::tf::generateTfName(node_ptr_, input_twist_frame_id_);
+
+  output_twist_frame_id_ = as2::tf::generateTfName(node_ptr_, output_twist_frame_id_);
+
   plugin_parameters_to_read_ = std::vector<std::string>(plugin_parameters_list_);
   position_control_parameters_list_ =
       std::vector<std::string>(position_control_parameters_to_read_);
@@ -209,30 +217,22 @@ void Plugin::resetState() {
 }
 
 void Plugin::resetReferences() {
-  control_ref_.position_header = uav_state_.position_header;
-  control_ref_.position        = uav_state_.position;
-
-  control_ref_.velocity_header = uav_state_.velocity_header;
-  control_ref_.velocity        = Eigen::Vector3d::Zero();
-
-  control_ref_.yaw = uav_state_.yaw;
+  control_ref_.position = uav_state_.position;
+  control_ref_.velocity = Eigen::Vector3d::Zero();
+  control_ref_.yaw      = uav_state_.yaw;
   return;
 }
 
 void Plugin::resetCommands() {
-  control_command_.velocity_header = std_msgs::msg::Header();
-  control_command_.velocity        = Eigen::Vector3d::Zero();
-  control_command_.yaw_speed       = 0.0;
+  control_command_.velocity  = Eigen::Vector3d::Zero();
+  control_command_.yaw_speed = 0.0;
   return;
 }
 
 void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
                          const geometry_msgs::msg::TwistStamped &twist_msg) {
-  uav_state_.position_header = pose_msg.header;
   uav_state_.position =
       Eigen::Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z);
-
-  uav_state_.velocity_header = twist_msg.header;
   uav_state_.velocity =
       Eigen::Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
   uav_state_.yaw.x() = as2::frame::getYawFromQuaternion(pose_msg.pose.orientation);
@@ -243,7 +243,6 @@ void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
 
 void Plugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg) {
   if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) {
-    control_ref_.position_header = pose_msg.header;
     control_ref_.position = Eigen::Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y,
                                             pose_msg.pose.position.z);
     flags_.ref_received   = true;
@@ -272,7 +271,6 @@ void Plugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg) 
     return;
   }
 
-  control_ref_.velocity_header = twist_msg.header;
   control_ref_.velocity =
       Eigen::Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
 
@@ -315,12 +313,36 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
   }
 
   control_mode_out_ = out_mode;
+
+  if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION ||
+      control_mode_in_.control_mode == as2_msgs::msg::ControlMode::TRAJECTORY) {
+    input_pose_frame_id_   = enu_frame_id_;
+    input_pose_frame_id_   = enu_frame_id_;
+    output_twist_frame_id_ = enu_frame_id_;
+  } else if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED) {
+    switch (control_mode_out_.reference_frame) {
+      case as2_msgs::msg::ControlMode::BODY_FLU_FRAME:
+        input_twist_frame_id_  = flu_frame_id_;
+        output_twist_frame_id_ = flu_frame_id_;
+        break;
+      case as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME:
+      default:
+        input_twist_frame_id_  = enu_frame_id_;
+        output_twist_frame_id_ = enu_frame_id_;
+        break;
+    }
+  }
+
   reset();
 
   return true;
 };
 
-bool Plugin::computeOutput(const double &dt,
+std::string Plugin::getDesiredPoseFrameId() { return input_pose_frame_id_; }
+
+std::string Plugin::getDesiredTwistFrameId() { return input_twist_frame_id_; }
+
+bool Plugin::computeOutput(double dt,
                            geometry_msgs::msg::PoseStamped &pose,
                            geometry_msgs::msg::TwistStamped &twist,
                            as2_msgs::msg::Thrust &thrust) {
@@ -361,8 +383,6 @@ bool Plugin::computeOutput(const double &dt,
         return false;
       }
 
-      control_command_.velocity_header.frame_id = control_ref_.position_header.frame_id;
-
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
       break;
@@ -375,24 +395,19 @@ bool Plugin::computeOutput(const double &dt,
         return false;
       }
 
-      control_command_.velocity_header.frame_id = control_ref_.position_header.frame_id;
-
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
       break;
     }
     case as2_msgs::msg::ControlMode::SPEED: {
       if (use_bypass_) {
-        control_command_.velocity_header.frame_id = control_ref_.velocity_header.frame_id;
-        control_command_.velocity                 = control_ref_.velocity;
+        control_command_.velocity = control_ref_.velocity;
       } else {
         if (!flags_.velocity_controller_parameters_read) {
           auto &clk = *node_ptr_->get_clock();
           RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                                "Velocity controller parameters not read yet");
         }
-
-        control_command_.velocity_header.frame_id = control_ref_.velocity_header.frame_id;
 
         control_command_.velocity = pid_3D_velocity_handler_->computeControl(
             dt, uav_state_.velocity, control_ref_.velocity);
@@ -443,42 +458,19 @@ bool Plugin::computeOutput(const double &dt,
       break;
   }
 
-  switch (control_mode_out_.reference_frame) {
-    case as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME: {
-      return getOutput(twist, enu_frame_id_);
-      break;
-    }
-    case as2_msgs::msg::ControlMode::BODY_FLU_FRAME: {
-      return getOutput(twist, flu_frame_id_);
-      break;
-    }
-    default:
-      auto &clk = *node_ptr_->get_clock();
-      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
-      return false;
-      break;
-  }
-  return false;
+  return getOutput(twist);
 }
 
-bool Plugin::getOutput(geometry_msgs::msg::TwistStamped &_twist_msg, const std::string &_frame_id) {
-  geometry_msgs::msg::TwistStamped control_command_twist;
-  control_command_twist.header = control_command_.velocity_header;
+bool Plugin::getOutput(geometry_msgs::msg::TwistStamped &_twist_msg) {
+  _twist_msg.header.frame_id = output_twist_frame_id_;
 
-  control_command_twist.twist.linear.x = control_command_.velocity.x();
-  control_command_twist.twist.linear.y = control_command_.velocity.y();
-  control_command_twist.twist.linear.z = control_command_.velocity.z();
+  _twist_msg.twist.linear.x = control_command_.velocity.x();
+  _twist_msg.twist.linear.y = control_command_.velocity.y();
+  _twist_msg.twist.linear.z = control_command_.velocity.z();
 
-  control_command_twist.twist.angular.x = 0;
-  control_command_twist.twist.angular.y = 0;
-  control_command_twist.twist.angular.z = control_command_.yaw_speed;
-
-  if (control_command_twist.header.frame_id == "") {
-    RCLCPP_WARN(node_ptr_->get_logger(), "Control command frame id is empty");
-    return false;
-  }
-
-  _twist_msg = tf_handler_->convert(control_command_twist, _frame_id);
+  _twist_msg.twist.angular.x = 0;
+  _twist_msg.twist.angular.y = 0;
+  _twist_msg.twist.angular.z = control_command_.yaw_speed;
   return true;
 };
 

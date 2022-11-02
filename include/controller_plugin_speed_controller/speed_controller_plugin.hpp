@@ -57,15 +57,12 @@
 namespace controller_plugin_speed_controller {
 
 struct UAV_state {
-  std_msgs::msg::Header position_header = std_msgs::msg::Header();
   Eigen::Vector3d position              = Eigen::Vector3d::Zero();
-  std_msgs::msg::Header velocity_header = std_msgs::msg::Header();
   Eigen::Vector3d velocity              = Eigen::Vector3d::Zero();
   Eigen::Vector3d yaw                   = Eigen::Vector3d::Zero();
 };
 
 struct UAV_command {
-  std_msgs::msg::Header velocity_header = std_msgs::msg::Header();
   Eigen::Vector3d velocity              = Eigen::Vector3d::Zero();
   double yaw_speed                      = 0.0;
 };
@@ -97,7 +94,10 @@ public:
   bool setMode(const as2_msgs::msg::ControlMode &mode_in,
                const as2_msgs::msg::ControlMode &mode_out) override;
 
-  bool computeOutput(const double &dt,
+  std::string getDesiredPoseFrameId();
+  std::string getDesiredTwistFrameId();
+
+  bool computeOutput(double dt,
                      geometry_msgs::msg::PoseStamped &pose,
                      geometry_msgs::msg::TwistStamped &twist,
                      as2_msgs::msg::Thrust &thrust) override;
@@ -167,8 +167,14 @@ private:
 
   bool use_bypass_              = true;
   bool proportional_limitation_ = false;
-  std::string enu_frame_id_     = "odom";
-  std::string flu_frame_id_     = "base_link";
+
+  std::string enu_frame_id_ = "odom";
+  std::string flu_frame_id_ = "base_link";
+
+  std::string input_pose_frame_id_  = enu_frame_id_;
+  std::string input_twist_frame_id_ = enu_frame_id_;
+
+  std::string output_twist_frame_id_ = enu_frame_id_;
 
 private:
   void checkParamList(const std::string &param,
@@ -188,7 +194,7 @@ private:
   void resetReferences();
   void resetCommands();
 
-  bool getOutput(geometry_msgs::msg::TwistStamped &twist_msg, const std::string &frame_id);
+  bool getOutput(geometry_msgs::msg::TwistStamped &twist_msg);
 };
 };  // namespace controller_plugin_speed_controller
 
