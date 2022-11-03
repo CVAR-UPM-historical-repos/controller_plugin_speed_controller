@@ -39,31 +39,24 @@
 namespace controller_plugin_speed_controller {
 
 void Plugin::ownInitialize() {
-  flags_.state_received                        = false;
-  flags_.ref_received                          = false;
-  flags_.plugin_parameters_read                = false;
-  flags_.position_controller_parameters_read   = false;
-  flags_.velocity_controller_parameters_read   = false;
-  flags_.trajectory_controller_parameters_read = false;
-  flags_.yaw_controller_parameters_read        = false;
-
   speed_limits_ = Eigen::Vector3d::Zero();
 
-  pid_yaw_handler_           = std::make_shared<pid_controller::PIDController>();
-  pid_3D_position_handler_   = std::make_shared<pid_controller::PIDController3D>();
-  pid_3D_velocity_handler_   = std::make_shared<pid_controller::PIDController3D>();
-  pid_3D_trajectory_handler_ = std::make_shared<pid_controller::PIDController3D>();
+  pid_yaw_handler_                 = std::make_shared<pid_controller::PIDController>();
+  pid_3D_position_handler_         = std::make_shared<pid_controller::PIDController3D>();
+  pid_3D_velocity_handler_         = std::make_shared<pid_controller::PIDController3D>();
+  pid_1D_speed_in_a_plane_handler_ = std::make_shared<pid_controller::PIDController>();
+  pid_3D_speed_in_a_plane_handler_ = std::make_shared<pid_controller::PIDController3D>();
+  pid_3D_trajectory_handler_       = std::make_shared<pid_controller::PIDController3D>();
 
   tf_handler_ = std::make_shared<as2::tf::TfHandler>(node_ptr_);
 
-  plugin_parameters_to_read_ = std::vector<std::string>(plugin_parameters_list_);
-  position_control_parameters_list_ =
-      std::vector<std::string>(position_control_parameters_to_read_);
-  velocity_control_parameters_list_ =
-      std::vector<std::string>(velocity_control_parameters_to_read_);
-  trajectory_control_parameters_list_ =
-      std::vector<std::string>(trajectory_control_parameters_to_read_);
-  yaw_control_parameters_list_ = std::vector<std::string>(yaw_control_parameters_to_read_);
+  enu_frame_id_ = as2::tf::generateTfName(node_ptr_, enu_frame_id_);
+  flu_frame_id_ = as2::tf::generateTfName(node_ptr_, flu_frame_id_);
+
+  input_pose_frame_id_  = as2::tf::generateTfName(node_ptr_, input_pose_frame_id_);
+  input_twist_frame_id_ = as2::tf::generateTfName(node_ptr_, input_twist_frame_id_);
+
+  output_twist_frame_id_ = as2::tf::generateTfName(node_ptr_, output_twist_frame_id_);
 
   reset();
   return;
@@ -120,6 +113,13 @@ rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(
         if (!flags_.velocity_controller_parameters_read) {
           checkParamList(param_name, velocity_control_parameters_to_read_,
                          flags_.velocity_controller_parameters_read);
+        }
+      } else if (controller == "speed_in_a_plane_control") {
+        updateSpeedInAPlaneParameter(pid_1D_speed_in_a_plane_handler_,
+                                     pid_3D_speed_in_a_plane_handler_, param_subname, param);
+        if (!flags_.speed_in_a_plane_controller_parameters_read) {
+          checkParamList(param_name, speed_in_a_plane_control_parameters_to_read_,
+                         flags_.speed_in_a_plane_controller_parameters_read);
         }
       } else if (controller == "trajectory_control") {
         updateController3DParameter(pid_3D_trajectory_handler_, param_subname, param);
@@ -191,6 +191,42 @@ void Plugin::updateController3DParameter(
   return;
 }
 
+void Plugin::updateSpeedInAPlaneParameter(
+    const std::shared_ptr<pid_controller::PIDController> &_pid_1d_handler,
+    const std::shared_ptr<pid_controller::PIDController3D> &_pid_3d_handler,
+    const std::string &_parameter_name,
+    const rclcpp::Parameter &_param) {
+  if (_parameter_name == "reset_integral") {
+    _pid_1d_handler->setResetIntegralSaturationFlag(_param.get_value<bool>());
+    _pid_3d_handler->setResetIntegralSaturationFlag(_param.get_value<bool>());
+  } else if (_parameter_name == "antiwindup_cte") {
+    _pid_1d_handler->setAntiWindup(_param.get_value<double>());
+    _pid_3d_handler->setAntiWindup(_param.get_value<double>());
+  } else if (_parameter_name == "alpha") {
+    _pid_1d_handler->setAlpha(_param.get_value<double>());
+    _pid_3d_handler->setAlpha(_param.get_value<double>());
+  } else if (_parameter_name == "height.kp") {
+    _pid_1d_handler->setGainKp(_param.get_value<double>());
+  } else if (_parameter_name == "height.ki") {
+    _pid_1d_handler->setGainKi(_param.get_value<double>());
+  } else if (_parameter_name == "height.kd") {
+    _pid_1d_handler->setGainKd(_param.get_value<double>());
+  } else if (_parameter_name == "speed.kp.x") {
+    _pid_3d_handler->setGainKpX(_param.get_value<double>());
+  } else if (_parameter_name == "speed.kp.y") {
+    _pid_3d_handler->setGainKpY(_param.get_value<double>());
+  } else if (_parameter_name == "speed.ki.x") {
+    _pid_3d_handler->setGainKiX(_param.get_value<double>());
+  } else if (_parameter_name == "speed.ki.y") {
+    _pid_3d_handler->setGainKiY(_param.get_value<double>());
+  } else if (_parameter_name == "speed.kd.x") {
+    _pid_3d_handler->setGainKdX(_param.get_value<double>());
+  } else if (_parameter_name == "speed.kd.y") {
+    _pid_3d_handler->setGainKdY(_param.get_value<double>());
+  }
+  return;
+}
+
 void Plugin::reset() {
   resetReferences();
   resetState();
@@ -201,7 +237,6 @@ void Plugin::reset() {
   pid_3D_trajectory_handler_->resetController();
   // Info: Yaw rate limit could be set if needed
   // pid_yaw_handler_->setOutputSaturation(yaw_speed_limit_);
-  last_time_ = node_ptr_->now();
 }
 
 void Plugin::resetState() {
@@ -210,30 +245,22 @@ void Plugin::resetState() {
 }
 
 void Plugin::resetReferences() {
-  control_ref_.position_header = uav_state_.position_header;
-  control_ref_.position        = uav_state_.position;
-
-  control_ref_.velocity_header = uav_state_.velocity_header;
-  control_ref_.velocity        = Eigen::Vector3d::Zero();
-
-  control_ref_.yaw = uav_state_.yaw;
+  control_ref_.position = uav_state_.position;
+  control_ref_.velocity = Eigen::Vector3d::Zero();
+  control_ref_.yaw      = uav_state_.yaw;
   return;
 }
 
 void Plugin::resetCommands() {
-  control_command_.velocity_header = std_msgs::msg::Header();
-  control_command_.velocity        = Eigen::Vector3d::Zero();
-  control_command_.yaw_speed       = 0.0;
+  control_command_.velocity  = Eigen::Vector3d::Zero();
+  control_command_.yaw_speed = 0.0;
   return;
 }
 
 void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
                          const geometry_msgs::msg::TwistStamped &twist_msg) {
-  uav_state_.position_header = pose_msg.header;
   uav_state_.position =
       Eigen::Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z);
-
-  uav_state_.velocity_header = twist_msg.header;
   uav_state_.velocity =
       Eigen::Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
   uav_state_.yaw.x() = as2::frame::getYawFromQuaternion(pose_msg.pose.orientation);
@@ -243,15 +270,16 @@ void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
 };
 
 void Plugin::updateReference(const geometry_msgs::msg::PoseStamped &pose_msg) {
-  if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) {
-    control_ref_.position_header = pose_msg.header;
+  if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION ||
+      control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) {
     control_ref_.position = Eigen::Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y,
                                             pose_msg.pose.position.z);
     flags_.ref_received   = true;
   }
 
   if ((control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED ||
-       control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION) &&
+       control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION ||
+       control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) &&
       control_mode_in_.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE) {
     control_ref_.yaw.x() = as2::frame::getYawFromQuaternion(pose_msg.pose.orientation);
   }
@@ -269,11 +297,11 @@ void Plugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg) 
     return;
   }
 
-  if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::SPEED) {
+  if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::SPEED &&
+      control_mode_in_.control_mode != as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) {
     return;
   }
 
-  control_ref_.velocity_header = twist_msg.header;
   control_ref_.velocity =
       Eigen::Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
 
@@ -316,49 +344,65 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
   }
 
   control_mode_out_ = out_mode;
+
+  if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION ||
+      control_mode_in_.control_mode == as2_msgs::msg::ControlMode::TRAJECTORY) {
+    input_pose_frame_id_   = enu_frame_id_;
+    input_pose_frame_id_   = enu_frame_id_;
+    output_twist_frame_id_ = enu_frame_id_;
+  } else if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED ||
+             control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) {
+    input_pose_frame_id_ = enu_frame_id_;
+    switch (control_mode_out_.reference_frame) {
+      case as2_msgs::msg::ControlMode::BODY_FLU_FRAME:
+        input_twist_frame_id_  = flu_frame_id_;
+        output_twist_frame_id_ = flu_frame_id_;
+        break;
+      case as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME:
+      default:
+        input_twist_frame_id_  = enu_frame_id_;
+        output_twist_frame_id_ = enu_frame_id_;
+        break;
+    }
+  }
+
   reset();
 
   return true;
 };
 
-void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
+std::string Plugin::getDesiredPoseFrameId() { return input_pose_frame_id_; }
+
+std::string Plugin::getDesiredTwistFrameId() { return input_twist_frame_id_; }
+
+bool Plugin::computeOutput(double dt,
+                           geometry_msgs::msg::PoseStamped &pose,
                            geometry_msgs::msg::TwistStamped &twist,
                            as2_msgs::msg::Thrust &thrust) {
   if (!flags_.state_received) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "State not received yet");
-    return;
+    return false;
   }
 
   if (!flags_.plugin_parameters_read) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Parameters not read yet");
-    return;
+    return false;
   }
 
   if (!flags_.position_controller_parameters_read) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                          "Parameters for hover controller not read yet");
-    return;
+    return false;
   }
 
   if (!flags_.ref_received) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                          "State changed, but ref not recived yet");
-    return;
-  }
-
-  rclcpp::Time current_time = node_ptr_->now();
-  double dt                 = (current_time - last_time_).nanoseconds() / 1.0e9;
-  last_time_                = current_time;
-
-  if (dt == 0) {
-    auto &clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 1000,
-                         "Loop delta time is zero. Check your clock");
-    return;
+    return false;
   }
 
   resetCommands();
@@ -369,10 +413,8 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Position controller parameters not read yet");
-        return;
+        return false;
       }
-
-      control_command_.velocity_header.frame_id = control_ref_.position_header.frame_id;
 
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
@@ -383,10 +425,8 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Position controller parameters not read yet");
-        return;
+        return false;
       }
-
-      control_command_.velocity_header.frame_id = control_ref_.position_header.frame_id;
 
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
@@ -394,8 +434,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
     }
     case as2_msgs::msg::ControlMode::SPEED: {
       if (use_bypass_) {
-        control_command_.velocity_header.frame_id = control_ref_.velocity_header.frame_id;
-        control_command_.velocity                 = control_ref_.velocity;
+        control_command_.velocity = control_ref_.velocity;
       } else {
         if (!flags_.velocity_controller_parameters_read) {
           auto &clk = *node_ptr_->get_clock();
@@ -403,11 +442,28 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
                                "Velocity controller parameters not read yet");
         }
 
-        control_command_.velocity_header.frame_id = control_ref_.velocity_header.frame_id;
-
         control_command_.velocity = pid_3D_velocity_handler_->computeControl(
             dt, uav_state_.velocity, control_ref_.velocity);
       }
+      break;
+    }
+    case as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE: {
+      if (use_bypass_) {
+        control_command_.velocity = control_ref_.velocity;
+      } else {
+        if (!flags_.velocity_controller_parameters_read) {
+          auto &clk = *node_ptr_->get_clock();
+          RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
+                               "Velocity controller parameters not read yet");
+        }
+
+        control_command_.velocity = pid_3D_speed_in_a_plane_handler_->computeControl(
+            dt, uav_state_.velocity, control_ref_.velocity);
+      }
+
+      control_command_.velocity.z() = pid_1D_speed_in_a_plane_handler_->computeControl(
+          dt, uav_state_.position.z(), control_ref_.position.z());
+
       break;
     }
     case as2_msgs::msg::ControlMode::TRAJECTORY: {
@@ -415,7 +471,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Trajectory controller parameters not read yet");
-        return;
+        return false;
       }
 
       control_command_.velocity =
@@ -426,7 +482,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
     default:
       auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown control mode");
-      return;
+      return false;
       break;
   }
 
@@ -436,7 +492,7 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
         auto &clk = *node_ptr_->get_clock();
         RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
                              "Yaw controller parameters not read yet");
-        return;
+        return false;
       }
 
       double yaw_error = as2::frame::angleMinError(control_ref_.yaw.x(), uav_state_.yaw.x());
@@ -450,46 +506,23 @@ void Plugin::computeOutput(geometry_msgs::msg::PoseStamped &pose,
     default:
       auto &clk = *node_ptr_->get_clock();
       RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown yaw mode");
-      return;
+      return false;
       break;
   }
 
-  switch (control_mode_out_.reference_frame) {
-    case as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME: {
-      getOutput(twist, enu_frame_id_);
-      break;
-    }
-    case as2_msgs::msg::ControlMode::BODY_FLU_FRAME: {
-      getOutput(twist, flu_frame_id_);
-      break;
-    }
-    default:
-      auto &clk = *node_ptr_->get_clock();
-      RCLCPP_ERROR_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Unknown reference frame");
-      return;
-      break;
-  }
-  return;
+  return getOutput(twist);
 }
 
-bool Plugin::getOutput(geometry_msgs::msg::TwistStamped &_twist_msg, const std::string &_frame_id) {
-  geometry_msgs::msg::TwistStamped control_command_twist;
-  control_command_twist.header = control_command_.velocity_header;
+bool Plugin::getOutput(geometry_msgs::msg::TwistStamped &_twist_msg) {
+  _twist_msg.header.frame_id = output_twist_frame_id_;
 
-  control_command_twist.twist.linear.x = control_command_.velocity.x();
-  control_command_twist.twist.linear.y = control_command_.velocity.y();
-  control_command_twist.twist.linear.z = control_command_.velocity.z();
+  _twist_msg.twist.linear.x = control_command_.velocity.x();
+  _twist_msg.twist.linear.y = control_command_.velocity.y();
+  _twist_msg.twist.linear.z = control_command_.velocity.z();
 
-  control_command_twist.twist.angular.x = 0;
-  control_command_twist.twist.angular.y = 0;
-  control_command_twist.twist.angular.z = control_command_.yaw_speed;
-
-  if (control_command_twist.header.frame_id == "") {
-    RCLCPP_WARN(node_ptr_->get_logger(), "Control command frame id is empty");
-    return false;
-  }
-
-  _twist_msg = tf_handler_->convert(control_command_twist, _frame_id);
+  _twist_msg.twist.angular.x = 0;
+  _twist_msg.twist.angular.y = 0;
+  _twist_msg.twist.angular.z = control_command_.yaw_speed;
   return true;
 };
 

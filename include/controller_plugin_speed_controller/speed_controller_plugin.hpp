@@ -34,13 +34,13 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ********************************************************************************/
 
-#ifndef __DF_PLUGIN_H__
-#define __DF_PLUGIN_H__
+#ifndef __SP_PLUGIN_H__
+#define __SP_PLUGIN_H__
 
+#include <chrono>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <vector>
-#include <chrono>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <as2_core/utils/frame_utils.hpp>
@@ -57,27 +57,25 @@
 namespace controller_plugin_speed_controller {
 
 struct UAV_state {
-  std_msgs::msg::Header position_header = std_msgs::msg::Header();
-  Eigen::Vector3d position              = Eigen::Vector3d::Zero();
-  std_msgs::msg::Header velocity_header = std_msgs::msg::Header();
-  Eigen::Vector3d velocity              = Eigen::Vector3d::Zero();
-  Eigen::Vector3d yaw                   = Eigen::Vector3d::Zero();
+  Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
+  Eigen::Vector3d yaw      = Eigen::Vector3d::Zero();
 };
 
 struct UAV_command {
-  std_msgs::msg::Header velocity_header = std_msgs::msg::Header();
-  Eigen::Vector3d velocity              = Eigen::Vector3d::Zero();
-  double yaw_speed                      = 0.0;
+  Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
+  double yaw_speed         = 0.0;
 };
 
 struct Control_flags {
-  bool state_received;
-  bool ref_received;
-  bool plugin_parameters_read;
-  bool position_controller_parameters_read;
-  bool velocity_controller_parameters_read;
-  bool trajectory_controller_parameters_read;
-  bool yaw_controller_parameters_read;
+  bool state_received                              = false;
+  bool ref_received                                = false;
+  bool plugin_parameters_read                      = false;
+  bool position_controller_parameters_read         = false;
+  bool velocity_controller_parameters_read         = false;
+  bool speed_in_a_plane_controller_parameters_read = false;
+  bool trajectory_controller_parameters_read       = false;
+  bool yaw_controller_parameters_read              = false;
 };
 
 class Plugin : public controller_plugin_base::ControllerBase {
@@ -97,7 +95,11 @@ public:
   bool setMode(const as2_msgs::msg::ControlMode &mode_in,
                const as2_msgs::msg::ControlMode &mode_out) override;
 
-  void computeOutput(geometry_msgs::msg::PoseStamped &pose,
+  std::string getDesiredPoseFrameId();
+  std::string getDesiredTwistFrameId();
+
+  bool computeOutput(double dt,
+                     geometry_msgs::msg::PoseStamped &pose,
                      geometry_msgs::msg::TwistStamped &twist,
                      as2_msgs::msg::Thrust &thrust) override;
 
@@ -108,8 +110,6 @@ public:
       const std::vector<rclcpp::Parameter> &parameters);
 
 private:
-  rclcpp::Time last_time_;
-
   as2_msgs::msg::ControlMode control_mode_in_;
   as2_msgs::msg::ControlMode control_mode_out_;
 
@@ -118,16 +118,15 @@ private:
   std::shared_ptr<pid_controller::PIDController> pid_yaw_handler_;
   std::shared_ptr<pid_controller::PIDController3D> pid_3D_position_handler_;
   std::shared_ptr<pid_controller::PIDController3D> pid_3D_velocity_handler_;
+  std::shared_ptr<pid_controller::PIDController> pid_1D_speed_in_a_plane_handler_;
+  std::shared_ptr<pid_controller::PIDController3D> pid_3D_speed_in_a_plane_handler_;
   std::shared_ptr<pid_controller::PIDController3D> pid_3D_trajectory_handler_;
 
   std::shared_ptr<as2::tf::TfHandler> tf_handler_;
 
-  std::vector<std::string> plugin_parameters_list_ = {
-      "proportional_limitation",
-      "use_bypass"
-  };
+  std::vector<std::string> plugin_parameters_list_ = {"proportional_limitation", "use_bypass"};
 
-  std::vector<std::string> position_control_parameters_list_ = {
+  const std::vector<std::string> position_control_parameters_list_ = {
       "position_control.reset_integral", "position_control.antiwindup_cte",
       "position_control.alpha",          "position_control.kp.x",
       "position_control.kp.y",           "position_control.kp.z",
@@ -135,13 +134,21 @@ private:
       "position_control.ki.z",           "position_control.kd.x",
       "position_control.kd.y",           "position_control.kd.z"};
 
-  std::vector<std::string> velocity_control_parameters_list_ = {
+  const std::vector<std::string> velocity_control_parameters_list_ = {
       "speed_control.reset_integral", "speed_control.antiwindup_cte", "speed_control.alpha",
       "speed_control.kp.x",           "speed_control.kp.y",           "speed_control.kp.z",
       "speed_control.ki.x",           "speed_control.ki.y",           "speed_control.ki.z",
       "speed_control.kd.x",           "speed_control.kd.y",           "speed_control.kd.z"};
 
-  std::vector<std::string> trajectory_control_parameters_list_ = {
+  const std::vector<std::string> speed_in_a_plane_control_parameters_list_ = {
+      "speed_in_a_plane_control.reset_integral", "speed_in_a_plane_control.antiwindup_cte",
+      "speed_in_a_plane_control.alpha",          "speed_in_a_plane_control.height.kp",
+      "speed_in_a_plane_control.height.ki",      "speed_in_a_plane_control.height.kd",
+      "speed_in_a_plane_control.speed.kp.x",     "speed_in_a_plane_control.speed.kp.y",
+      "speed_in_a_plane_control.speed.ki.x",     "speed_in_a_plane_control.speed.ki.y",
+      "speed_in_a_plane_control.speed.kd.x",     "speed_in_a_plane_control.speed.kd.y"};
+
+  const std::vector<std::string> trajectory_control_parameters_list_ = {
       "trajectory_control.reset_integral", "trajectory_control.antiwindup_cte",
       "trajectory_control.alpha",          "trajectory_control.kp.x",
       "trajectory_control.kp.y",           "trajectory_control.kp.z",
@@ -149,18 +156,21 @@ private:
       "trajectory_control.ki.z",           "trajectory_control.kd.x",
       "trajectory_control.kd.y",           "trajectory_control.kd.z"};
 
-  std::vector<std::string> yaw_control_parameters_list_ = {"yaw_control.reset_integral",
-                                                           "yaw_control.antiwindup_cte",
-                                                           "yaw_control.alpha",
-                                                           "yaw_control.kp",
-                                                           "yaw_control.ki",
-                                                           "yaw_control.kd"};
+  const std::vector<std::string> yaw_control_parameters_list_ = {"yaw_control.reset_integral",
+                                                                 "yaw_control.antiwindup_cte",
+                                                                 "yaw_control.alpha",
+                                                                 "yaw_control.kp",
+                                                                 "yaw_control.ki",
+                                                                 "yaw_control.kd"};
 
-  std::vector<std::string> plugin_parameters_to_read_;
-  std::vector<std::string> position_control_parameters_to_read_;
-  std::vector<std::string> velocity_control_parameters_to_read_;
-  std::vector<std::string> trajectory_control_parameters_to_read_;
-  std::vector<std::string> yaw_control_parameters_to_read_;
+  std::vector<std::string> plugin_parameters_to_read_{plugin_parameters_list_};
+  std::vector<std::string> position_control_parameters_to_read_{position_control_parameters_list_};
+  std::vector<std::string> velocity_control_parameters_to_read_{velocity_control_parameters_list_};
+  std::vector<std::string> speed_in_a_plane_control_parameters_to_read_{
+      speed_in_a_plane_control_parameters_list_};
+  std::vector<std::string> trajectory_control_parameters_to_read_{
+      trajectory_control_parameters_list_};
+  std::vector<std::string> yaw_control_parameters_to_read_{yaw_control_parameters_list_};
 
   UAV_state uav_state_;
   UAV_state control_ref_;
@@ -169,10 +179,16 @@ private:
   Eigen::Vector3d speed_limits_;
   double yaw_speed_limit_;
 
-  bool use_bypass_ = true;
+  bool use_bypass_              = true;
   bool proportional_limitation_ = false;
-  std::string enu_frame_id_     = "odom";
-  std::string flu_frame_id_     = "base_link";
+
+  std::string enu_frame_id_ = "odom";
+  std::string flu_frame_id_ = "base_link";
+
+  std::string input_pose_frame_id_  = enu_frame_id_;
+  std::string input_twist_frame_id_ = enu_frame_id_;
+
+  std::string output_twist_frame_id_ = enu_frame_id_;
 
 private:
   void checkParamList(const std::string &param,
@@ -188,11 +204,17 @@ private:
       const std::string &_parameter_name,
       const rclcpp::Parameter &_param);
 
+  void updateSpeedInAPlaneParameter(
+      const std::shared_ptr<pid_controller::PIDController> &_pid_1d_handler,
+      const std::shared_ptr<pid_controller::PIDController3D> &_pid_3d_handler,
+      const std::string &_parameter_name,
+      const rclcpp::Parameter &_param);
+
   void resetState();
   void resetReferences();
   void resetCommands();
 
-  bool getOutput(geometry_msgs::msg::TwistStamped &twist_msg, const std::string &frame_id);
+  bool getOutput(geometry_msgs::msg::TwistStamped &twist_msg);
 };
 };  // namespace controller_plugin_speed_controller
 
