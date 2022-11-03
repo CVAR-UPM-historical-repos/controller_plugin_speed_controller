@@ -366,8 +366,6 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
     }
   }
 
-  reset();
-
   return true;
 };
 
