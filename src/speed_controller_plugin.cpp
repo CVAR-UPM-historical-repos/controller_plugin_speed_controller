@@ -333,6 +333,16 @@ void Plugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &t
 
 bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
                      const as2_msgs::msg::ControlMode &out_mode) {
+  RCLCPP_INFO(node_ptr_->get_logger(), "Plugin: try to set input mode: [%s]",
+              as2::control_mode::controlModeToString(in_mode).c_str());
+
+  RCLCPP_INFO(node_ptr_->get_logger(), "Plugin: try to set output mode:[%s]",
+              as2::control_mode::controlModeToString(out_mode).c_str());
+
+  RCLCPP_INFO(node_ptr_->get_logger(), "Flags params read: plugin %d, position %d, velocity %d",
+              flags_.plugin_parameters_read, flags_.position_controller_parameters_read,
+              flags_.velocity_controller_parameters_read);
+
   if (!flags_.plugin_parameters_read) {
     RCLCPP_WARN(node_ptr_->get_logger(), "Plugin parameters not read yet, can not set mode");
     return false;

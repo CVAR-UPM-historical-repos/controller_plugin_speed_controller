@@ -54,6 +54,8 @@
 #include <pid_controller/PID.hpp>
 #include <pid_controller/PID_3D.hpp>
 
+#include "as2_core/utils/control_mode_utils.hpp"
+
 namespace controller_plugin_speed_controller {
 
 struct UAV_state {
