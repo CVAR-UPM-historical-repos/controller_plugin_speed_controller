@@ -333,15 +333,6 @@ void Plugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &t
 
 bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
                      const as2_msgs::msg::ControlMode &out_mode) {
-  RCLCPP_INFO(node_ptr_->get_logger(), "Plugin: try to set input mode: [%s]",
-              as2::control_mode::controlModeToString(in_mode).c_str());
-
-  RCLCPP_INFO(node_ptr_->get_logger(), "Plugin: try to set output mode:[%s]",
-              as2::control_mode::controlModeToString(out_mode).c_str());
-
-  RCLCPP_INFO(node_ptr_->get_logger(), "Flags params read: plugin %d, position %d, velocity %d",
-              flags_.plugin_parameters_read, flags_.position_controller_parameters_read,
-              flags_.velocity_controller_parameters_read);
 
   if (!flags_.plugin_parameters_read) {
     RCLCPP_WARN(node_ptr_->get_logger(), "Plugin parameters not read yet, can not set mode");
@@ -360,8 +351,8 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
     RCLCPP_WARN(node_ptr_->get_logger(),
                 "Trajectory controller parameters not read yet, can not set mode to TRAJECTORY");
     return false;
-  } else if ((control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED ||
-              control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) &&
+  } else if ((in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED ||
+              in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) &&
              (!flags_.velocity_controller_parameters_read && !use_bypass_)) {
     control_mode_in_.control_mode = as2_msgs::msg::ControlMode::HOVER;
     RCLCPP_WARN(node_ptr_->get_logger(),
