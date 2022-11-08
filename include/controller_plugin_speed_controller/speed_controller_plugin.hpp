@@ -178,6 +178,8 @@ private:
   UAV_state control_ref_;
   UAV_command control_command_;
 
+  bool hover_flag_ = false;
+
   Eigen::Vector3d speed_limits_;
   double yaw_speed_limit_;
 
