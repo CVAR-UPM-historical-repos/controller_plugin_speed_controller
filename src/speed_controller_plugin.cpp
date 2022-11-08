@@ -108,7 +108,7 @@ rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(
           checkParamList(param_name, position_control_parameters_to_read_,
                          flags_.position_controller_parameters_read);
         }
-      } else if (controller == "velocity_control") {
+      } else if (controller == "speed_control") {
         updateController3DParameter(pid_3D_velocity_handler_, param_subname, param);
         if (!flags_.velocity_controller_parameters_read) {
           checkParamList(param_name, velocity_control_parameters_to_read_,
