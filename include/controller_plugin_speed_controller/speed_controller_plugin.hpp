@@ -54,6 +54,8 @@
 #include <pid_controller/PID.hpp>
 #include <pid_controller/PID_3D.hpp>
 
+#include "as2_core/utils/control_mode_utils.hpp"
+
 namespace controller_plugin_speed_controller {
 
 struct UAV_state {
@@ -175,6 +177,8 @@ private:
   UAV_state uav_state_;
   UAV_state control_ref_;
   UAV_command control_command_;
+
+  bool hover_flag_ = false;
 
   Eigen::Vector3d speed_limits_;
   double yaw_speed_limit_;

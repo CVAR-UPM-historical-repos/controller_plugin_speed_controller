@@ -108,7 +108,7 @@ rcl_interfaces::msg::SetParametersResult Plugin::parametersCallback(
           checkParamList(param_name, position_control_parameters_to_read_,
                          flags_.position_controller_parameters_read);
         }
-      } else if (controller == "velocity_control") {
+      } else if (controller == "speed_control") {
         updateController3DParameter(pid_3D_velocity_handler_, param_subname, param);
         if (!flags_.velocity_controller_parameters_read) {
           checkParamList(param_name, velocity_control_parameters_to_read_,
@@ -259,11 +259,27 @@ void Plugin::resetCommands() {
 
 void Plugin::updateState(const geometry_msgs::msg::PoseStamped &pose_msg,
                          const geometry_msgs::msg::TwistStamped &twist_msg) {
+  if (pose_msg.header.frame_id != input_pose_frame_id_ &&
+      twist_msg.header.frame_id != input_twist_frame_id_) {
+    RCLCPP_ERROR(node_ptr_->get_logger(), "Pose and Twist frame_id are not desired ones");
+    RCLCPP_ERROR(node_ptr_->get_logger(), "Recived: %s, %s", pose_msg.header.frame_id.c_str(),
+                 twist_msg.header.frame_id.c_str());
+    RCLCPP_ERROR(node_ptr_->get_logger(), "Desired: %s, %s", input_pose_frame_id_.c_str(),
+                 input_twist_frame_id_.c_str());
+    return;
+  }
+
   uav_state_.position =
       Eigen::Vector3d(pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z);
   uav_state_.velocity =
       Eigen::Vector3d(twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z);
   uav_state_.yaw.x() = as2::frame::getYawFromQuaternion(pose_msg.pose.orientation);
+
+  if (hover_flag_) {
+    resetReferences();
+    flags_.ref_received = true;
+    hover_flag_         = false;
+  }
 
   flags_.state_received = true;
   return;
@@ -333,21 +349,54 @@ void Plugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &t
 
 bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
                      const as2_msgs::msg::ControlMode &out_mode) {
+  if (!flags_.plugin_parameters_read) {
+    RCLCPP_WARN(node_ptr_->get_logger(), "Plugin parameters not read yet, can not set mode");
+    return false;
+  }
+
+  if (!flags_.position_controller_parameters_read) {
+    RCLCPP_WARN(node_ptr_->get_logger(),
+                "Position controller parameters not read, can not set mode");
+    return false;
+  }
+
+  if (in_mode.control_mode == as2_msgs::msg::ControlMode::TRAJECTORY &&
+      !flags_.trajectory_controller_parameters_read) {
+    RCLCPP_WARN(node_ptr_->get_logger(),
+                "Trajectory controller parameters not read yet, can not set mode to TRAJECTORY");
+    return false;
+  } else if ((in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED ||
+              in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) &&
+             (!flags_.velocity_controller_parameters_read && !use_bypass_)) {
+    RCLCPP_WARN(node_ptr_->get_logger(),
+                "Velocity controller parameters not read yet and bypass is not used, can not set "
+                "mode to SPEED or SPEED_IN_A_PLANE");
+    return false;
+  }
+
+  if (in_mode.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE &&
+      !flags_.yaw_controller_parameters_read) {
+    RCLCPP_WARN(node_ptr_->get_logger(),
+                "Yaw controller parameters not read yet, can not set mode to YAW_ANGLE");
+    return false;
+  }
+
   if (in_mode.control_mode == as2_msgs::msg::ControlMode::HOVER) {
     control_mode_in_.control_mode    = in_mode.control_mode;
     control_mode_in_.yaw_mode        = as2_msgs::msg::ControlMode::YAW_ANGLE;
     control_mode_in_.reference_frame = as2_msgs::msg::ControlMode::LOCAL_ENU_FRAME;
+    hover_flag_                      = true;
   } else {
-    flags_.ref_received   = false;
-    flags_.state_received = false;
-    control_mode_in_      = in_mode;
+    control_mode_in_ = in_mode;
   }
 
-  control_mode_out_ = out_mode;
+  flags_.state_received = false;
+  flags_.ref_received   = false;
+  control_mode_out_     = out_mode;
 
-  if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION ||
+  if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::HOVER ||
+      control_mode_in_.control_mode == as2_msgs::msg::ControlMode::POSITION ||
       control_mode_in_.control_mode == as2_msgs::msg::ControlMode::TRAJECTORY) {
-    input_pose_frame_id_   = enu_frame_id_;
     input_pose_frame_id_   = enu_frame_id_;
     output_twist_frame_id_ = enu_frame_id_;
   } else if (control_mode_in_.control_mode == as2_msgs::msg::ControlMode::SPEED ||
@@ -383,19 +432,6 @@ bool Plugin::computeOutput(double dt,
     return false;
   }
 
-  if (!flags_.plugin_parameters_read) {
-    auto &clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000, "Parameters not read yet");
-    return false;
-  }
-
-  if (!flags_.position_controller_parameters_read) {
-    auto &clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                         "Parameters for hover controller not read yet");
-    return false;
-  }
-
   if (!flags_.ref_received) {
     auto &clk = *node_ptr_->get_clock();
     RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
@@ -407,25 +443,11 @@ bool Plugin::computeOutput(double dt,
 
   switch (control_mode_in_.control_mode) {
     case as2_msgs::msg::ControlMode::HOVER: {
-      if (!flags_.position_controller_parameters_read) {
-        auto &clk = *node_ptr_->get_clock();
-        RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                             "Position controller parameters not read yet");
-        return false;
-      }
-
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
       break;
     }
     case as2_msgs::msg::ControlMode::POSITION: {
-      if (!flags_.position_controller_parameters_read) {
-        auto &clk = *node_ptr_->get_clock();
-        RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                             "Position controller parameters not read yet");
-        return false;
-      }
-
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
       break;
@@ -434,12 +456,6 @@ bool Plugin::computeOutput(double dt,
       if (use_bypass_) {
         control_command_.velocity = control_ref_.velocity;
       } else {
-        if (!flags_.velocity_controller_parameters_read) {
-          auto &clk = *node_ptr_->get_clock();
-          RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                               "Velocity controller parameters not read yet");
-        }
-
         control_command_.velocity = pid_3D_velocity_handler_->computeControl(
             dt, uav_state_.velocity, control_ref_.velocity);
       }
@@ -449,12 +465,6 @@ bool Plugin::computeOutput(double dt,
       if (use_bypass_) {
         control_command_.velocity = control_ref_.velocity;
       } else {
-        if (!flags_.velocity_controller_parameters_read) {
-          auto &clk = *node_ptr_->get_clock();
-          RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                               "Velocity controller parameters not read yet");
-        }
-
         control_command_.velocity = pid_3D_speed_in_a_plane_handler_->computeControl(
             dt, uav_state_.velocity, control_ref_.velocity);
       }
@@ -465,13 +475,6 @@ bool Plugin::computeOutput(double dt,
       break;
     }
     case as2_msgs::msg::ControlMode::TRAJECTORY: {
-      if (!flags_.trajectory_controller_parameters_read) {
-        auto &clk = *node_ptr_->get_clock();
-        RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                             "Trajectory controller parameters not read yet");
-        return false;
-      }
-
       control_command_.velocity =
           pid_3D_trajectory_handler_->computeControl(dt, uav_state_.position, control_ref_.position,
                                                      uav_state_.velocity, control_ref_.velocity);
@@ -486,13 +489,6 @@ bool Plugin::computeOutput(double dt,
 
   switch (control_mode_in_.yaw_mode) {
     case as2_msgs::msg::ControlMode::YAW_ANGLE: {
-      if (!flags_.yaw_controller_parameters_read) {
-        auto &clk = *node_ptr_->get_clock();
-        RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                             "Yaw controller parameters not read yet");
-        return false;
-      }
-
       double yaw_error = as2::frame::angleMinError(control_ref_.yaw.x(), uav_state_.yaw.x());
       control_command_.yaw_speed = pid_yaw_handler_->computeControl(dt, yaw_error);
       break;
