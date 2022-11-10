@@ -357,6 +357,9 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
   if (!flags_.position_controller_parameters_read) {
     RCLCPP_WARN(node_ptr_->get_logger(),
                 "Position controller parameters not read, can not set mode");
+    for (auto &param : position_control_parameters_to_read_) {
+      RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not read", param.c_str());
+    }
     return false;
   }
 
@@ -364,6 +367,9 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
       !flags_.trajectory_controller_parameters_read) {
     RCLCPP_WARN(node_ptr_->get_logger(),
                 "Trajectory controller parameters not read yet, can not set mode to TRAJECTORY");
+    for (auto &param : trajectory_control_parameters_to_read_) {
+      RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not read", param.c_str());
+    }
     return false;
   } else if ((in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED ||
               in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED_IN_A_PLANE) &&
@@ -371,6 +377,15 @@ bool Plugin::setMode(const as2_msgs::msg::ControlMode &in_mode,
     RCLCPP_WARN(node_ptr_->get_logger(),
                 "Velocity controller parameters not read yet and bypass is not used, can not set "
                 "mode to SPEED or SPEED_IN_A_PLANE");
+    if (in_mode.control_mode == as2_msgs::msg::ControlMode::SPEED) {
+      for (auto &param : velocity_control_parameters_to_read_) {
+        RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not read", param.c_str());
+      }
+    } else {
+      for (auto &param : speed_in_a_plane_control_parameters_to_read_) {
+        RCLCPP_WARN(node_ptr_->get_logger(), "Parameter %s not read", param.c_str());
+      }
+    }
     return false;
   }
 
