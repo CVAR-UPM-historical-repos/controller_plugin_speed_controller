@@ -457,16 +457,14 @@ bool Plugin::computeOutput(double dt,
   resetCommands();
 
   switch (control_mode_in_.control_mode) {
-    case as2_msgs::msg::ControlMode::HOVER: {
+    case as2_msgs::msg::ControlMode::HOVER:
+    case as2_msgs::msg::ControlMode::POSITION:
       control_command_.velocity =
           pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
+
+      control_command_.velocity = pid_3D_position_handler_->saturateOutput(
+          control_command_.velocity, speed_limits_, proportional_limitation_);
       break;
-    }
-    case as2_msgs::msg::ControlMode::POSITION: {
-      control_command_.velocity =
-          pid_3D_position_handler_->computeControl(dt, uav_state_.position, control_ref_.position);
-      break;
-    }
     case as2_msgs::msg::ControlMode::SPEED: {
       if (use_bypass_) {
         control_command_.velocity = control_ref_.velocity;
@@ -493,6 +491,9 @@ bool Plugin::computeOutput(double dt,
       control_command_.velocity =
           pid_3D_trajectory_handler_->computeControl(dt, uav_state_.position, control_ref_.position,
                                                      uav_state_.velocity, control_ref_.velocity);
+
+      control_command_.velocity = pid_3D_trajectory_handler_->saturateOutput(
+          control_command_.velocity, speed_limits_, proportional_limitation_);
       break;
     }
     default:
