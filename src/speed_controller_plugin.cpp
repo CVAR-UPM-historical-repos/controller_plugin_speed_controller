@@ -329,19 +329,17 @@ void Plugin::updateReference(const geometry_msgs::msg::TwistStamped &twist_msg) 
   return;
 };
 
-void Plugin::updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &traj_msg) {
+void Plugin::updateReference(const as2_msgs::msg::TrajectoryPoint &traj_msg) {
   if (control_mode_in_.control_mode != as2_msgs::msg::ControlMode::TRAJECTORY) {
     return;
   }
 
   control_ref_.position =
-      Eigen::Vector3d(traj_msg.positions[0], traj_msg.positions[1], traj_msg.positions[2]);
+      Eigen::Vector3d(traj_msg.position.x, traj_msg.position.y, traj_msg.position.z);
 
-  control_ref_.velocity =
-      Eigen::Vector3d(traj_msg.velocities[0], traj_msg.velocities[1], traj_msg.velocities[2]);
+  control_ref_.velocity = Eigen::Vector3d(traj_msg.twist.x, traj_msg.twist.y, traj_msg.twist.z);
 
-  control_ref_.yaw =
-      Eigen::Vector3d(traj_msg.positions[3], traj_msg.velocities[3], traj_msg.accelerations[3]);
+  control_ref_.yaw.x() = traj_msg.yaw_angle;
 
   flags_.ref_received = true;
   return;

@@ -42,19 +42,18 @@
 #include <rclcpp/rclcpp.hpp>
 #include <vector>
 
+#include "as2_core/utils/control_mode_utils.hpp"
+#include "as2_core/utils/frame_utils.hpp"
+#include "as2_core/utils/tf_utils.hpp"
+#include "as2_msgs/msg/thrust.hpp"
+#include "as2_msgs/msg/trajectory_point.hpp"
+#include "controller_plugin_base/controller_base.hpp"
+#include "pid_controller/PID.hpp"
+#include "pid_controller/PID_3D.hpp"
+
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <as2_core/utils/frame_utils.hpp>
-#include <as2_core/utils/tf_utils.hpp>
-#include <as2_msgs/msg/thrust.hpp>
-#include <controller_plugin_base/controller_base.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
-#include <trajectory_msgs/msg/joint_trajectory_point.hpp>
-
-#include <pid_controller/PID.hpp>
-#include <pid_controller/PID_3D.hpp>
-
-#include "as2_core/utils/control_mode_utils.hpp"
 
 namespace controller_plugin_speed_controller {
 
@@ -92,7 +91,7 @@ public:
 
   void updateReference(const geometry_msgs::msg::PoseStamped &ref) override;
   void updateReference(const geometry_msgs::msg::TwistStamped &ref) override;
-  void updateReference(const trajectory_msgs::msg::JointTrajectoryPoint &ref) override;
+  void updateReference(const as2_msgs::msg::TrajectoryPoint &ref) override;
 
   bool setMode(const as2_msgs::msg::ControlMode &mode_in,
                const as2_msgs::msg::ControlMode &mode_out) override;
